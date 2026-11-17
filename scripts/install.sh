@@ -93,7 +93,9 @@ fi
 
 # 3. Install System Dependencies
 echo -e "\n${YELLOW}[Step 2/5] Installing Required System Packages...${NC}"
-apt-get update -y
+# Use ForceIPv4 and retries to prevent IPv6 unreachable and timeout errors on Raspberry Pi
+APT_OPTS=(-o "Acquire::ForceIPv4=true" -o "Acquire::Retries=3")
+apt-get "${APT_OPTS[@]}" update -y
 
 PACKAGES=(
     python3
@@ -115,7 +117,7 @@ PACKAGES=(
 )
 
 echo -e "[INFO] Installing: ${PACKAGES[*]}"
-apt-get install -y --no-install-recommends "${PACKAGES[@]}"
+apt-get "${APT_OPTS[@]}" install -y --fix-missing --no-install-recommends "${PACKAGES[@]}"
 
 # 4. Audio Configuration (3.5mm Headphone Jack)
 echo -e "\n${YELLOW}[Step 3/5] Configuring Audio Output (3.5mm Jack)...${NC}"
