@@ -1,8 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=YouTube TV
-Comment=Buka YouTube fullscreen
-Exec=@APP_DIR@/start-youtube.sh
-Icon=web-browser
-Terminal=false
-Categories=Network;AudioVideo;
