@@ -22,6 +22,8 @@ fi
 
 # 2. Native HDMI Display Configuration
 export FRAMEBUFFER="/dev/fb0"
+# Wake up and force HDMI output if sleeping
+echo on > /sys/class/drm/card0-HDMI-A-1/status 2>/dev/null || true
 echo "[INFO] Using native HDMI display output (/dev/fb0)"
 
 # 3. Audio Output Default Route
