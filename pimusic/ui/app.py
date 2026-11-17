@@ -45,8 +45,11 @@ class App:
     def __init__(self, fullscreen: bool = False):
         init_directories()
 
-        # Initialize Pygame
-        pygame.init()
+        # Prevent Pygame from touching ALSA (MPV handles all audio playback)
+        os.environ["SDL_AUDIODRIVER"] = "dummy"
+
+        # Initialize Pygame subsystems (Display and Font only)
+        pygame.display.init()
         pygame.font.init()
         try:
             pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)

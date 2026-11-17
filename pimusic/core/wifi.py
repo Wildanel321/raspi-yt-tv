@@ -47,6 +47,7 @@ class WifiManager:
         self._is_scanning = False
         self._is_connecting = False
         self._is_checking_portal = False
+        self._last_status_time = 0.0
         self.active_interface = self._detect_wifi_interface()
 
         # Cached state
@@ -85,8 +86,17 @@ class WifiManager:
         status = self.get_status()
         return status.get("connected", False)
 
-    def get_status(self) -> Dict[str, any]:
-        """Gets current connection status, SSID, signal, and IP address."""
+    def get_status(self, force: bool = False) -> Dict[str, any]:
+        """
+        Gets current connection status, SSID, signal, and IP address.
+        Throttled to run at most once every 4 seconds to conserve CPU.
+        """
+        now = time.time()
+        if not force and (now - self._last_status_time < 4.0):
+            return dict(self.last_status)
+
+        self._last_status_time = now
+
         if not self.has_nmcli:
             # Fallback for desktop simulation
             return dict(self.last_status)
