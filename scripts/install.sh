@@ -43,30 +43,45 @@ elif [ -f "/boot/config.txt" ]; then
 fi
 
 LCD_DRIVER_FOUND=false
+
 if [ -n "$BOOT_CONFIG" ]; then
-    echo -e "[INFO] Checking $BOOT_CONFIG for TFT overlays..."
-    if grep -E -q "dtoverlay=(waveshare35a|waveshare35b|tft35a|mhs35|piscreen)" "$BOOT_CONFIG"; then
-        echo -e "${GREEN}[OK] 3.5\" TFT SPI LCD driver overlay detected! Preserving existing driver settings.${NC}"
+    echo -e "[INFO] Checking $BOOT_CONFIG for TFT configuration..."
+
+    # Detect configured TFT overlays
+    if grep -E -q '^[[:space:]]*dtoverlay=(fbtft|waveshare35a|waveshare35b|tft35a|mhs35|piscreen)' "$BOOT_CONFIG"; then
+        echo -e "${GREEN}[OK] TFT overlay configuration detected.${NC}"
         LCD_DRIVER_FOUND=true
-    elif [ -e "/dev/fb1" ]; then
-        echo -e "${GREEN}[OK] Secondary framebuffer /dev/fb1 detected! Preserving existing display setup.${NC}"
-        LCD_DRIVER_FOUND=true
-    else
-        echo -e "${YELLOW}[NOTE] Driver LCD TFT 3.5\" belum terdeteksi di $BOOT_CONFIG atau /dev/fb1.${NC}"
-        echo -e "Apakah Anda ingin mengunduh dan mengonfigurasi driver LCD 3.5\" sekarang? [y/N]"
-        read -r -t 15 install_lcd || install_lcd="n"
-        if [[ "$install_lcd" =~ ^[Yy]$ ]]; then
-            chmod +x "$SCRIPT_DIR/scripts/setup_lcd_driver.sh"
-            bash "$SCRIPT_DIR/scripts/setup_lcd_driver.sh"
-            echo -e "${GREEN}[OK] Selesai menjalankan konfigurasi driver LCD.${NC}"
-            LCD_DRIVER_FOUND=true
-        else
-            echo -e "[INFO] Melewati instalasi driver LCD. Anda dapat menjalankannya nanti dengan:"
-            echo -e "       ${CYAN}sudo bash scripts/setup_lcd_driver.sh${NC}"
-        fi
     fi
 else
-    echo -e "${YELLOW}[WARNING] Could not locate /boot/config.txt. Skipping driver check.${NC}"
+    echo -e "${YELLOW}[WARNING] Could not locate /boot/config.txt. Skipping config check.${NC}"
+fi
+
+# Detect active framebuffer, including manually configured ILI9486
+if [ -e "/dev/fb1" ] || [ -e "/sys/class/graphics/fb1" ]; then
+    echo -e "${GREEN}[OK] LCD framebuffer /dev/fb1 detected.${NC}"
+    LCD_DRIVER_FOUND=true
+fi
+
+if [ "$LCD_DRIVER_FOUND" = false ]; then
+    echo -e "${YELLOW}[NOTE] LCD TFT 3.5 inch belum terdeteksi.${NC}"
+    read -r -t 15 -p "Install LCD driver sekarang? [y/N] " install_lcd || install_lcd="n"
+
+    if [[ "$install_lcd" =~ ^[Yy]$ ]]; then
+        chmod +x "$SCRIPT_DIR/scripts/setup_lcd_driver.sh"
+        bash "$SCRIPT_DIR/scripts/setup_lcd_driver.sh"
+        echo -e "${GREEN}[OK] LCD driver setup selesai.${NC}"
+    else
+        echo -e "[INFO] Melewati instalasi driver LCD."
+    fi
+fi
+
+# Detect XPT2046 touchscreen kernel driver
+if grep -q "ADS7846 Touchscreen" /proc/bus/input/devices 2>/dev/null; then
+    echo -e "${GREEN}[OK] XPT2046 / ADS7846 touchscreen detected.${NC}"
+elif [ -d "/sys/bus/spi/drivers/ads7846" ]; then
+    echo -e "${GREEN}[OK] ADS7846 kernel driver available.${NC}"
+else
+    echo -e "${YELLOW}[NOTE] Touchscreen belum terdeteksi.${NC}"
 fi
 
 # Check XPT2046 touchscreen calibration files
