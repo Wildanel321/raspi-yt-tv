@@ -114,6 +114,8 @@ PACKAGES=(
     xserver-xorg-input-libinput
     xserver-xorg-input-evdev
     x11-xserver-utils
+    xinput
+    xinput-calibrator
     git
     curl
     netsurf-gtk
