@@ -48,7 +48,10 @@ class App:
         # Initialize Pygame
         pygame.init()
         pygame.font.init()
-        pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+        try:
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+        except Exception:
+            pass
 
         # Display Setup
         flags = pygame.DOUBLEBUF
