@@ -212,8 +212,9 @@ class App:
             # 1. Process Input Events
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    self.is_running = False
-                    break
+                    # Do not terminate when HDMI cable is disconnected; continue audio playback
+                    logger.info("Window/Display disconnect event received. Playback continues uninterrupted.")
+                    continue
 
                 self.last_interaction_time = pygame.time.get_ticks() / 1000.0
 
@@ -260,7 +261,11 @@ class App:
                 btn.is_active = (tab_id == self.active_tab)
                 btn.draw(self.screen)
 
-            pygame.display.flip()
+            try:
+                pygame.display.flip()
+            except Exception as e:
+                # Catch display surface loss during HDMI hotplug
+                time.sleep(0.1)
 
             # 4. CPU-aware Framerate Throttling for Pi 3
             now = pygame.time.get_ticks() / 1000.0
