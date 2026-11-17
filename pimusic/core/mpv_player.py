@@ -79,7 +79,9 @@ class MPVPlayer:
         ]
 
         if not IS_WINDOWS:
-            mpv_cmd.append(f"--ao={self.alsa_device}")
+            mpv_cmd.append("--ao=alsa")
+            if self.alsa_device and self.alsa_device != "alsa/default":
+                mpv_cmd.append(f"--audio-device={self.alsa_device}")
 
         try:
             logger.info("Spawning MPV background process...")
