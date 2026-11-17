@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Wi-Fi Selector
+Comment=Pilih atau ganti jaringan Wi-Fi
+Exec=@APP_DIR@/wifi-selector.sh
+Icon=network-wireless
+Terminal=false
+Categories=Network;
