@@ -260,8 +260,9 @@ class BluetoothView(BaseView):
         surface.blit(stat_surf, (12, status_y))
 
         # Output indicator badge on right
-        output_mode_str = "Output: 3.5mm Jack" if cur_mode := self.app.bluetooth.audio_output_mode == "jack" else "Output: Bluetooth"
-        out_badge = font_sm.render(output_mode_str, True, COLOR_INFO if cur_mode else COLOR_SUCCESS)
+        is_jack = (self.app.bluetooth.audio_output_mode == "jack")
+        output_mode_str = "Output: 3.5mm Jack" if is_jack else "Output: Bluetooth"
+        out_badge = font_sm.render(output_mode_str, True, COLOR_INFO if is_jack else COLOR_SUCCESS)
         surface.blit(out_badge, (SCREEN_WIDTH - out_badge.get_width() - 12, status_y))
 
         # Thin divider line
