@@ -42,14 +42,28 @@ elif [ -f "/boot/config.txt" ]; then
     BOOT_CONFIG="/boot/config.txt"
 fi
 
+LCD_DRIVER_FOUND=false
 if [ -n "$BOOT_CONFIG" ]; then
     echo -e "[INFO] Checking $BOOT_CONFIG for TFT overlays..."
-    if grep -E -q "dtoverlay=(waveshare35a|tft35a|mhs35|piscreen)" "$BOOT_CONFIG"; then
+    if grep -E -q "dtoverlay=(waveshare35a|waveshare35b|tft35a|mhs35|piscreen)" "$BOOT_CONFIG"; then
         echo -e "${GREEN}[OK] 3.5\" TFT SPI LCD driver overlay detected! Preserving existing driver settings.${NC}"
+        LCD_DRIVER_FOUND=true
+    elif [ -e "/dev/fb1" ]; then
+        echo -e "${GREEN}[OK] Secondary framebuffer /dev/fb1 detected! Preserving existing display setup.${NC}"
+        LCD_DRIVER_FOUND=true
     else
-        echo -e "${YELLOW}[NOTE] No standard 3.5\" TFT overlay detected in $BOOT_CONFIG.${NC}"
-        echo -e "[NOTE] If your LCD is already configured with custom drivers, your existing configuration is preserved."
-        echo -e "[NOTE] If you haven't installed the LCD driver yet, please install the manufacturer driver (e.g. LCD-show) without overwriting this project."
+        echo -e "${YELLOW}[NOTE] Driver LCD TFT 3.5\" belum terdeteksi di $BOOT_CONFIG atau /dev/fb1.${NC}"
+        echo -e "Apakah Anda ingin mengunduh dan mengonfigurasi driver LCD 3.5\" sekarang? [y/N]"
+        read -r -t 15 install_lcd || install_lcd="n"
+        if [[ "$install_lcd" =~ ^[Yy]$ ]]; then
+            chmod +x "$SCRIPT_DIR/scripts/setup_lcd_driver.sh"
+            bash "$SCRIPT_DIR/scripts/setup_lcd_driver.sh"
+            echo -e "${GREEN}[OK] Selesai menjalankan konfigurasi driver LCD.${NC}"
+            LCD_DRIVER_FOUND=true
+        else
+            echo -e "[INFO] Melewati instalasi driver LCD. Anda dapat menjalankannya nanti dengan:"
+            echo -e "       ${CYAN}sudo bash scripts/setup_lcd_driver.sh${NC}"
+        fi
     fi
 else
     echo -e "${YELLOW}[WARNING] Could not locate /boot/config.txt. Skipping driver check.${NC}"

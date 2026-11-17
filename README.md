@@ -94,6 +94,7 @@ raspi-yt-tv/
 ├── scripts/
 │   ├── install.sh            # Automated installer for Raspberry Pi OS Lite
 │   ├── uninstall.sh          # Safe uninstaller
+│   ├── setup_lcd_driver.sh   # 3.5" TFT SPI LCD & XPT2046 driver downloader/installer
 │   ├── start.sh              # Display & touchscreen environment launcher
 │   └── pi-music.service      # Systemd autostart service definition
 ├── pimusic/
@@ -133,10 +134,14 @@ raspi-yt-tv/
 
 ## 🚀 Installation & Quick Start
 
-### 1. Existing LCD Driver Note
+### 1. LCD & Touchscreen Driver Detection
 > [!IMPORTANT]
-> **Pi Music never overwrites your existing LCD driver or `/boot/config.txt`.**  
-> Ensure your 3.5" TFT LCD (e.g. Waveshare35a, Keystudio, MHS-35) is already working and showing the Linux console before installing.
+> **Pi Music never blindly overwrites your existing LCD driver or `/boot/config.txt`.**  
+> - **Jika driver LCD sudah terpasang**: `install.sh` akan mendeteksinya secara otomatis dan mempertahankan seluruh konfigurasi bawaan Anda.
+> - **Jika driver LCD belum terpasang**: `install.sh` akan menawarkan opsi untuk **mengunduh dan memasang driver LCD 3.5" secara otomatis** (mendukung Waveshare 3.5" A/B, MHS-35, Keystudio, dan `LCD-show` resmi dengan kalibrasi XPT2046). Anda juga dapat menjalankan pengunduh driver secara terpisah kapan saja:
+>   ```bash
+>   sudo bash scripts/setup_lcd_driver.sh
+>   ```
 
 ### 2. Automated Installation
 Clone the repository to your Raspberry Pi 3 and run the installer:

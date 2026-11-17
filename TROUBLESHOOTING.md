@@ -52,13 +52,21 @@ speaker-test -t sine -f 440 -c 2 -l 2
 ```bash
 ls -l /dev/fb*
 ```
-If only `/dev/fb0` exists, your SPI LCD driver is not loaded. Ensure your manufacturer driver (e.g. Waveshare35a, Keystudio, MHS-35) is enabled in `/boot/config.txt`:
+Jika hanya ada `/dev/fb0`, berarti driver SPI LCD belum aktif. Anda dapat mengunduh dan memasangnya secara otomatis menggunakan skrip pembantu Pi Music:
+```bash
+sudo bash scripts/setup_lcd_driver.sh
+```
+Skrip ini akan mencadangkan `config.txt` Anda secara aman, lalu menawarkan pilihan driver (Waveshare 3.5", MHS-35, Keystudio, atau unduh repositori `LCD-show` resmi via Git).
+
+Atau Anda dapat mengonfigurasinya secara manual di `/boot/config.txt` atau `/boot/firmware/config.txt`:
 ```ini
-# For Waveshare 3.5" TFT A:
+dtparam=spi=on
+
+# Untuk Waveshare 3.5" TFT A:
 dtoverlay=waveshare35a:rotate=90
 
-# Or for generic TFT 35:
-dtoverlay=tft35a:rotate=90
+# Atau untuk MHS-35 / generic TFT 35:
+dtoverlay=mhs35:rotate=90
 ```
 
 #### Cause B: Pygame rendering to the wrong framebuffer.
