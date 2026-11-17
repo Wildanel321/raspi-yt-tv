@@ -96,6 +96,7 @@ PACKAGES=(
     x11-xserver-utils
     git
     curl
+    netsurf-gtk
 )
 
 echo -e "[INFO] Installing: ${PACKAGES[*]}"

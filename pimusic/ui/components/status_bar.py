@@ -9,7 +9,7 @@ from typing import Optional
 from config import (
     SCREEN_WIDTH, STATUS_BAR_HEIGHT, COLOR_SURFACE, COLOR_SURFACE_BORDER,
     COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_TEXT_MUTED,
-    COLOR_SUCCESS, COLOR_ACCENT
+    COLOR_SUCCESS, COLOR_WARNING, COLOR_ACCENT
 )
 from pimusic.core.system_info import SystemInfo
 from pimusic.ui.theme import Theme
@@ -20,15 +20,17 @@ class StatusBar:
     def __init__(self):
         self.rect = pygame.Rect(0, 0, SCREEN_WIDTH, STATUS_BAR_HEIGHT)
         self.wifi_connected = False
+        self.portal_detected = False
         self.is_playing = False
         self.current_title = ""
         self._last_time_str = ""
         self._cpu_temp_str = ""
         self._last_update = 0.0
 
-    def update(self, wifi_connected: bool, is_playing: bool, current_title: str):
+    def update(self, wifi_connected: bool, is_playing: bool, current_title: str, portal_detected: bool = False):
         """Update status values periodically."""
         self.wifi_connected = wifi_connected
+        self.portal_detected = portal_detected
         self.is_playing = is_playing
         self.current_title = current_title
 
@@ -78,5 +80,10 @@ class StatusBar:
             right_x -= (temp_surf.get_width() + 10)
 
         # Wi-Fi icon
-        wifi_color = COLOR_SUCCESS if self.wifi_connected else COLOR_TEXT_MUTED
+        if self.portal_detected:
+            wifi_color = COLOR_WARNING
+        elif self.wifi_connected:
+            wifi_color = COLOR_SUCCESS
+        else:
+            wifi_color = COLOR_TEXT_MUTED
         Theme.draw_icon(surface, "wifi", right_x - 8, cy, size=14, color=wifi_color)

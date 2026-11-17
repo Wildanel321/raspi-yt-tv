@@ -99,6 +99,27 @@ class TestPiMusicCore(unittest.TestCase):
         status = wm.get_status()
         self.assertIn("connected", status)
         self.assertIn("ssid", status)
+        self.assertIn("state", status)
+        self.assertIn("portal_detected", status)
+
+        # Test disconnect / reconnect callbacks in simulation mode
+        results = []
+        wm.disconnect_async(lambda success, msg: results.append(("disconnect", success)))
+        wm.reconnect_async(lambda success, msg: results.append(("reconnect", success)))
+        wm.check_captive_portal_async(lambda detected, url: results.append(("portal", detected)))
+
+        # Wait briefly for worker threads
+        import time
+        time.sleep(1.2)
+        actions = [r[0] for r in results]
+        self.assertIn("disconnect", actions)
+        self.assertIn("reconnect", actions)
+        self.assertIn("portal", actions)
+
+        net_open = WifiNetwork("Guest", 70, "Open")
+        net_sec = WifiNetwork("Secure", 80, "WPA2")
+        self.assertTrue(net_open.is_open)
+        self.assertFalse(net_sec.is_open)
 
 if __name__ == "__main__":
     unittest.main()

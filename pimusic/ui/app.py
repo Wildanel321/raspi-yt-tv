@@ -217,7 +217,8 @@ class App:
             self.status_bar.update(
                 wifi_connected=self.wifi.is_connected(),
                 is_playing=self.player.is_playing and not self.player.is_paused,
-                current_title=title
+                current_title=title,
+                portal_detected=self.wifi.last_status.get("portal_detected", False)
             )
 
             # Update queue badge count

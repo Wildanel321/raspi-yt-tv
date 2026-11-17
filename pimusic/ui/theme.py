@@ -211,3 +211,28 @@ class Theme:
             # X mark
             pygame.draw.line(surface, color, (center_x - hs + 3, center_y - hs + 3), (center_x + hs - 3, center_y + hs - 3), 2)
             pygame.draw.line(surface, color, (center_x + hs - 3, center_y - hs + 3), (center_x - hs + 3, center_y + hs - 3), 2)
+
+        elif icon_name == "lock":
+            # Padlock (body + shackle)
+            bw = size - 6
+            bh = size - 8
+            # Shackle
+            sh_r = pygame.Rect(center_x - 4, center_y - hs, 8, 8)
+            pygame.draw.arc(surface, color, sh_r, 0, math.pi, 2)
+            # Body
+            b_rect = pygame.Rect(center_x - bw // 2, center_y - hs + 6, bw, bh)
+            pygame.draw.rect(surface, color, b_rect, border_radius=2)
+
+        elif icon_name == "portal" or icon_name == "globe":
+            # Globe with latitude/longitude
+            pygame.draw.circle(surface, color, (center_x, center_y), hs - 2, 2)
+            pygame.draw.line(surface, color, (center_x - hs + 2, center_y), (center_x + hs - 2, center_y), 1)
+            pygame.draw.line(surface, color, (center_x, center_y - hs + 2), (center_x, center_y + hs - 2), 1)
+            el_rect = pygame.Rect(center_x - (hs - 4) // 2, center_y - hs + 2, hs - 4, (hs - 2) * 2)
+            pygame.draw.ellipse(surface, color, el_rect, 1)
+
+        elif icon_name == "disconnect":
+            # Broken link or plug
+            pygame.draw.line(surface, color, (center_x - hs + 2, center_y - hs + 2), (center_x + hs - 2, center_y + hs - 2), 2)
+            pygame.draw.circle(surface, color, (center_x - 3, center_y + 3), 3, 2)
+            pygame.draw.circle(surface, color, (center_x + 3, center_y - 3), 3, 2)

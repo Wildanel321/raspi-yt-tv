@@ -129,7 +129,7 @@ export SDL_FBDEV=/dev/fb1
 
 ---
 
-## 🌐 4. Wi-Fi Issues (NetworkManager)
+## 🌐 4. Wi-Fi & Captive Portal Issues (NetworkManager)
 
 ### Symptom: Wi-Fi status shows "Disconnected" or "No Connection".
 
@@ -154,6 +154,17 @@ export SDL_FBDEV=/dev/fb1
    ```bash
    nmcli dev wifi connect "YOUR_SSID" password "YOUR_PASSWORD"
    ```
+
+### Captive Portal Login (Wi-Fi Hotel, Kampus, Kafe):
+Ketika Wi-Fi terhubung namun memerlukan login portal (halaman syarat & ketentuan atau voucher):
+- Status bar dan Wi-Fi Manager akan menampilkan badge oranye: `[Portal Login Required]`.
+- Tombol **"Open Login Portal"** akan muncul otomatis di halaman Wi-Fi.
+- Menekan tombol tersebut akan membuka browser ringan (`netsurf-gtk` atau `dillo`) untuk melakukan login manual.
+- Kredensial tidak disimpan untuk menjamin privasi.
+- Jika browser ringan belum terpasang di Raspberry Pi OS Lite:
+  ```bash
+  sudo apt-get install -y netsurf-gtk
+  ```
 
 ---
 

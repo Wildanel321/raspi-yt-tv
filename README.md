@@ -39,7 +39,14 @@ Standard web browsers like Chromium easily consume 500MB to 800MB of RAM, causin
 - **Comprehensive Playback Controls**: Play, Pause, Next, Previous, Stop, Seek bar slider, Repeat (Loop All / Loop One), and Shuffle.
 - **Queue & Playlist Management**: Add to queue, jump to track, remove individual tracks, clear queue, and persistent queue state saved across reboots.
 - **Album Artwork & Metadata**: Fetches album art thumbnails, track title (with smooth marquee scrolling for long titles), artist, and duration.
-- **Touchscreen Wi-Fi Manager**: Scan available Wi-Fi access points, enter passwords via the on-screen keyboard, and connect via NetworkManager (`nmcli`).
+- **Touchscreen Wi-Fi Manager & Captive Portal Support**:
+  - Pindai & tampilkan daftar SSID sekitar secara live dengan indikator sinyal dan jenis enkripsi.
+  - Hubungkan jaringan (dengan input password via keyboard sentuh), putuskan (*disconnect*), dan sambungkan kembali (*reconnect*).
+  - Tampilkan status koneksi, SSID aktif, IP address, antarmuka (`wlan0`), dan persentase sinyal.
+  - **Deteksi Captive Portal Otomatis**: Mendeteksi jaringan Wi-Fi publik/login portal dengan tombol **"Open Login Portal"**.
+  - **Autentikasi Manual Bebas Jejak**: Meluncurkan browser ultra-ringan (`netsurf-gtk` / `dillo`) untuk login captive portal secara manual tanpa menyimpan kredensial.
+  - **Proteksi Koneksi Aktif**: Tidak pernah memutus Wi-Fi saat pemutaran atau pencarian lagu berlangsung.
+  - **100% Asynchronous**: Seluruh pemindaian dan operasi jaringan berjalan di background thread agar GUI touchscreen tidak pernah macet (*freeze*).
 - **Status Bar & Hardware Health**: Real-time clock, Wi-Fi status icon, ALSA volume level, CPU temperature, RAM usage, and CPU load.
 - **Safe Power Controls**: Reboot and Shutdown options with touch confirmation modals.
 - **Direct Boot to Player**: Fullscreen kiosk startup via systemd without desktop environment overhead.
