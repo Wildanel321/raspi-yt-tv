@@ -163,8 +163,31 @@ sudo -u "$ACTUAL_USER" "$VENV_DIR/bin/pip" install --upgrade yt-dlp
 chmod +x "$SCRIPT_DIR/scripts/start.sh"
 chmod +x "$SCRIPT_DIR/main.py"
 
-# 6. Install & Configure Systemd Service
-echo -e "\n${YELLOW}[Step 5/5] Configuring Systemd Autostart Service...${NC}"
+# 6. Configure X11 Permissions & LCD Framebuffer for Systemd
+echo -e "\n${YELLOW}[Step 5/6] Configuring X11 Permissions and LCD Display Device...${NC}"
+# Allow non-console users to run X server from systemd service
+if [ -d "/etc/X11" ]; then
+    cat << 'EOF' > /etc/X11/Xwrapper.config
+allowed_users=anybody
+needs_root_rights=yes
+EOF
+fi
+
+# Configure Xorg to bind to /dev/fb1 if SPI LCD is detected
+mkdir -p /etc/X11/xorg.conf.d
+if [ -e "/dev/fb1" ] || [ "$LCD_DRIVER_FOUND" = true ]; then
+    cat << 'EOF' > /etc/X11/xorg.conf.d/99-fbdev.conf
+Section "Device"
+    Identifier "TouchscreenLCD"
+    Driver "fbdev"
+    Option "fbdev" "/dev/fb1"
+EndSection
+EOF
+    echo -e "${GREEN}[OK] Xorg mapped to /dev/fb1 (3.5\" TFT SPI LCD).${NC}"
+fi
+
+# 7. Install & Configure Systemd Service
+echo -e "\n${YELLOW}[Step 6/6] Configuring Systemd Autostart Service...${NC}"
 SERVICE_FILE="/etc/systemd/system/pi-music.service"
 
 cat <<EOF > "$SERVICE_FILE"
@@ -179,7 +202,6 @@ User=$ACTUAL_USER
 Group=$ACTUAL_USER
 WorkingDirectory=$SCRIPT_DIR
 Environment=PYTHONUNBUFFERED=1
-Environment=DISPLAY=:0
 Environment=XDG_RUNTIME_DIR=/run/user/$(id -u "$ACTUAL_USER")
 ExecStart=/bin/bash $SCRIPT_DIR/scripts/start.sh
 Restart=on-failure

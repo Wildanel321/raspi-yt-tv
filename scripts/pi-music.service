@@ -9,7 +9,6 @@ User=pi
 Group=pi
 WorkingDirectory=/home/pi/raspi-yt-tv
 Environment=PYTHONUNBUFFERED=1
-Environment=DISPLAY=:0
 Environment=XDG_RUNTIME_DIR=/run/user/1000
 ExecStart=/bin/bash /home/pi/raspi-yt-tv/scripts/start.sh
 Restart=on-failure

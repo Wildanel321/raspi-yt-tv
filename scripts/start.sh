@@ -58,12 +58,24 @@ if command -v amixer >/dev/null 2>&1; then
 fi
 
 # 4. Display Server Selection (Lightweight X11 vs Direct Framebuffer)
-# On Raspberry Pi OS Lite, running via xinit provides optimal XPT2046 touch calibration
-if [ -z "$DISPLAY" ] && command -v xinit >/dev/null 2>&1; then
-    echo "[INFO] Starting lightweight X11 wrapper for perfect touch calibration..."
+# Verify if an X server is actually responding on $DISPLAY
+X_RUNNING=false
+if [ -n "$DISPLAY" ]; then
+    if command -v xset >/dev/null 2>&1 && xset q >/dev/null 2>&1; then
+        X_RUNNING=true
+    elif [ -e "/tmp/.X11-unix/X${DISPLAY#*:}" ]; then
+        X_RUNNING=true
+    fi
+fi
+
+if [ "$X_RUNNING" = true ]; then
+    echo "[INFO] Using existing X11 display ($DISPLAY)..."
+    exec "$PYTHON_CMD" main.py --fullscreen --no-cursor
+elif command -v xinit >/dev/null 2>&1; then
+    echo "[INFO] Starting lightweight X11 wrapper on TFT display..."
+    unset DISPLAY
     exec xinit "$PYTHON_CMD" main.py --fullscreen --no-cursor -- :0 -nocursor -s 0 dpms
 else
-    # Fallback: Run directly with current DISPLAY or direct SDL2
-    echo "[INFO] Starting Pi Music directly..."
+    echo "[INFO] Starting Pi Music directly on framebuffer..."
     exec "$PYTHON_CMD" main.py --fullscreen --no-cursor
 fi
