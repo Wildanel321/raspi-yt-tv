@@ -17,9 +17,9 @@ SCREEN_WIDTH = 480
 SCREEN_HEIGHT = 320
 SCREEN_SIZE = (SCREEN_WIDTH, SCREEN_HEIGHT)
 
-# Frame rate configuration (Pi 3 CPU optimization)
-FPS_ACTIVE = 25     # FPS during active interaction or animation
-FPS_IDLE = 12       # Low FPS when screen is static to conserve CPU cycles
+# Frame rate configuration (Pi 3 CPU & SPI bus optimization)
+FPS_ACTIVE = 20     # Smooth response during touch interaction
+FPS_IDLE = 8        # Minimal redraws when idle to stop SPI bus flicker
 
 # Audio & Playback Configuration
 DEFAULT_VOLUME = 70

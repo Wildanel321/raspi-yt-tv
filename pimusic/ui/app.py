@@ -56,8 +56,8 @@ class App:
         except Exception:
             pass
 
-        # Display Setup
-        flags = pygame.DOUBLEBUF
+        # Display Setup (SCALED enables auto-adaptation to any HDMI resolution)
+        flags = pygame.DOUBLEBUF | pygame.SCALED
         if fullscreen:
             flags |= pygame.FULLSCREEN
 

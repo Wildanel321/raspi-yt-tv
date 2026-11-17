@@ -33,63 +33,11 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# 2. Inspect Existing Display and Touchscreen Configuration
-echo -e "\n${YELLOW}[Step 1/5] Checking Display & Touchscreen Configuration...${NC}"
-BOOT_CONFIG=""
-if [ -f "/boot/firmware/config.txt" ]; then
-    BOOT_CONFIG="/boot/firmware/config.txt"
-elif [ -f "/boot/config.txt" ]; then
-    BOOT_CONFIG="/boot/config.txt"
-fi
-
-LCD_DRIVER_FOUND=false
-
-if [ -n "$BOOT_CONFIG" ]; then
-    echo -e "[INFO] Checking $BOOT_CONFIG for TFT configuration..."
-
-    # Detect configured TFT overlays
-    if grep -E -q '^[[:space:]]*dtoverlay=(fbtft|waveshare35a|waveshare35b|tft35a|mhs35|piscreen)' "$BOOT_CONFIG"; then
-        echo -e "${GREEN}[OK] TFT overlay configuration detected.${NC}"
-        LCD_DRIVER_FOUND=true
-    fi
-else
-    echo -e "${YELLOW}[WARNING] Could not locate /boot/config.txt. Skipping config check.${NC}"
-fi
-
-# Detect active framebuffer, including manually configured ILI9486
-if [ -e "/dev/fb1" ] || [ -e "/sys/class/graphics/fb1" ]; then
-    echo -e "${GREEN}[OK] LCD framebuffer /dev/fb1 detected.${NC}"
-    LCD_DRIVER_FOUND=true
-fi
-
-if [ "$LCD_DRIVER_FOUND" = false ]; then
-    echo -e "${YELLOW}[NOTE] LCD TFT 3.5 inch belum terdeteksi.${NC}"
-    read -r -t 15 -p "Install LCD driver sekarang? [y/N] " install_lcd || install_lcd="n"
-
-    if [[ "$install_lcd" =~ ^[Yy]$ ]]; then
-        chmod +x "$SCRIPT_DIR/scripts/setup_lcd_driver.sh"
-        bash "$SCRIPT_DIR/scripts/setup_lcd_driver.sh"
-        echo -e "${GREEN}[OK] LCD driver setup selesai.${NC}"
-    else
-        echo -e "[INFO] Melewati instalasi driver LCD."
-    fi
-fi
-
-# Detect XPT2046 touchscreen kernel driver
-if grep -q "ADS7846 Touchscreen" /proc/bus/input/devices 2>/dev/null; then
-    echo -e "${GREEN}[OK] XPT2046 / ADS7846 touchscreen detected.${NC}"
-elif [ -d "/sys/bus/spi/drivers/ads7846" ]; then
-    echo -e "${GREEN}[OK] ADS7846 kernel driver available.${NC}"
-else
-    echo -e "${YELLOW}[NOTE] Touchscreen belum terdeteksi.${NC}"
-fi
-
-# Check XPT2046 touchscreen calibration files
-if [ -f "/etc/X11/xorg.conf.d/99-calibration.conf" ]; then
-    echo -e "${GREEN}[OK] XPT2046 touchscreen calibration file detected in /etc/X11/xorg.conf.d/99-calibration.conf${NC}"
-else
-    echo -e "[INFO] Touchscreen will use default evdev/libinput calibration."
-fi
+# 2. Display Configuration Check (Native HDMI Output)
+echo -e "\n${YELLOW}[Step 1/5] Configuring Display for Native HDMI Output...${NC}"
+# Clean any leftover SPI LCD configs to ensure clean HDMI rendering
+rm -f /etc/X11/xorg.conf.d/99-fbdev.conf 2>/dev/null || true
+echo -e "${GREEN}[OK] Native HDMI output configured (/dev/fb0 with VC4 KMS driver).${NC}"
 
 # 3. Install System Dependencies
 echo -e "\n${YELLOW}[Step 2/5] Installing Required System Packages...${NC}"
@@ -164,7 +112,8 @@ chmod +x "$SCRIPT_DIR/scripts/start.sh"
 chmod +x "$SCRIPT_DIR/main.py"
 
 # 6. Configure X11 Permissions & LCD Framebuffer for Systemd
-echo -e "\n${YELLOW}[Step 5/6] Configuring X11 Permissions and LCD Display Device...${NC}"
+# 6. Configure X11 Permissions for Systemd
+echo -e "\n${YELLOW}[Step 5/5] Configuring X11 Permissions for HDMI Service...${NC}"
 # Allow non-console users to run X server from systemd service
 if [ -d "/etc/X11" ]; then
     cat << 'EOF' > /etc/X11/Xwrapper.config
@@ -173,21 +122,11 @@ needs_root_rights=yes
 EOF
 fi
 
-# Configure Xorg to bind to /dev/fb1 if SPI LCD is detected
-mkdir -p /etc/X11/xorg.conf.d
-if [ -e "/dev/fb1" ] || [ "$LCD_DRIVER_FOUND" = true ]; then
-    cat << 'EOF' > /etc/X11/xorg.conf.d/99-fbdev.conf
-Section "Device"
-    Identifier "TouchscreenLCD"
-    Driver "fbdev"
-    Option "fbdev" "/dev/fb1"
-EndSection
-EOF
-    echo -e "${GREEN}[OK] Xorg mapped to /dev/fb1 (3.5\" TFT SPI LCD).${NC}"
-fi
+# Clean any stale SPI fbdev configuration so Xorg uses the native HDMI GPU driver
+rm -f /etc/X11/xorg.conf.d/99-fbdev.conf 2>/dev/null || true
 
 # 7. Install & Configure Systemd Service
-echo -e "\n${YELLOW}[Step 6/6] Configuring Systemd Autostart Service...${NC}"
+echo -e "\n${YELLOW}[Step 5/5] Configuring Systemd Autostart Service...${NC}"
 SERVICE_FILE="/etc/systemd/system/pi-music.service"
 
 cat <<EOF > "$SERVICE_FILE"

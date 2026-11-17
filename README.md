@@ -22,9 +22,9 @@ Standard web browsers like Chromium easily consume 500MB to 800MB of RAM, causin
 | Component | Specification |
 | :--- | :--- |
 | **SBC** | Raspberry Pi 3 Model B / B+ (1GB RAM) |
-| **Display** | 3.5" SPI TFT LCD (Resolution: 480×320) |
-| **Touch Controller** | XPT2046 / ADS7846 resistive SPI touch controller |
-| **Audio Output** | 3.5mm Analog Audio Jack (ALSA) & **Bluetooth Audio (A2DP Speaker / Headphones)** |
+| **Display** | Native HDMI Output (TV / Monitor / Car Head Unit HDMI Display) |
+| **Input** | USB Mouse / Touchscreen / Keyboard |
+| **Audio Output** | HDMI Audio, 3.5mm Analog Audio Jack (ALSA), & **Bluetooth Audio (A2DP Speaker / Headphones)** |
 | **Network** | Built-in Wi-Fi / Ethernet |
 | **Storage** | MicroSD Card (8GB+ Class 10 recommended) |
 
@@ -32,8 +32,9 @@ Standard web browsers like Chromium easily consume 500MB to 800MB of RAM, causin
 
 ## ✨ Features
 
-- **Designed for 480×320 Touchscreens**: High-contrast modern dark mode with finger-friendly touch targets (min. 40px) and active visual touch feedback.
-- **On-Screen Virtual Keyboard**: Full QWERTY touchscreen keyboard with letters, numbers, symbols, shift, backspace, and real-time input preview.
+- **HDMI Auto-Scaling**: Tampilan otomatis menyesuaikan resolusi monitor/TV HDMI (720p, 1080p, dll.) secara tajam dan proporsional via `pygame.SCALED`.
+- **UI Modern Dark Mode**: Desain modern menyerupai *car head unit* / smart TV dengan navigasi intuitif.
+- **On-Screen Virtual Keyboard & USB Keyboard Support**: Mendukung keyboard virtual di layar maupun keyboard fisik.
 - **Fast YouTube Search**: Search songs, artists, or albums in milliseconds using non-blocking background threads.
 - **Audio-Only Streaming**: Extracts direct audio streams (m4a/opus) via `yt-dlp` and feeds them directly to an MPV daemon, bypassing video decoding completely.
 - **Comprehensive Playback Controls**: Play, Pause, Next, Previous, Stop, Seek bar slider, Repeat (Loop All / Loop One), and Shuffle.
