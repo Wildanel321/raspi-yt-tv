@@ -9,7 +9,7 @@ from typing import Optional
 from config import (
     SCREEN_WIDTH, STATUS_BAR_HEIGHT, COLOR_SURFACE, COLOR_SURFACE_BORDER,
     COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_TEXT_MUTED,
-    COLOR_SUCCESS, COLOR_WARNING, COLOR_ACCENT
+    COLOR_SUCCESS, COLOR_WARNING, COLOR_ACCENT, COLOR_INFO
 )
 from pimusic.core.system_info import SystemInfo
 from pimusic.ui.theme import Theme
@@ -21,16 +21,25 @@ class StatusBar:
         self.rect = pygame.Rect(0, 0, SCREEN_WIDTH, STATUS_BAR_HEIGHT)
         self.wifi_connected = False
         self.portal_detected = False
+        self.bt_connected = False
         self.is_playing = False
         self.current_title = ""
         self._last_time_str = ""
         self._cpu_temp_str = ""
         self._last_update = 0.0
 
-    def update(self, wifi_connected: bool, is_playing: bool, current_title: str, portal_detected: bool = False):
+    def update(
+        self,
+        wifi_connected: bool,
+        is_playing: bool,
+        current_title: str,
+        portal_detected: bool = False,
+        bt_connected: bool = False
+    ):
         """Update status values periodically."""
         self.wifi_connected = wifi_connected
         self.portal_detected = portal_detected
+        self.bt_connected = bt_connected
         self.is_playing = is_playing
         self.current_title = current_title
 
@@ -78,6 +87,11 @@ class StatusBar:
             temp_rect = temp_surf.get_rect(midright=(right_x, cy))
             surface.blit(temp_surf, temp_rect)
             right_x -= (temp_surf.get_width() + 10)
+
+        # Bluetooth icon (if connected)
+        if self.bt_connected:
+            Theme.draw_icon(surface, "bluetooth", right_x - 8, cy, size=13, color=COLOR_INFO)
+            right_x -= 18
 
         # Wi-Fi icon
         if self.portal_detected:

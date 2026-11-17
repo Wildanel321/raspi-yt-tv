@@ -22,6 +22,7 @@ from pimusic.core.mpv_player import MPVPlayer
 from pimusic.core.playlist import PlaylistManager
 from pimusic.core.youtube import YouTubeService, Track
 from pimusic.core.wifi import WifiManager
+from pimusic.core.bluetooth import BluetoothManager
 from pimusic.core.system_info import SystemInfo
 from pimusic.utils.cache import ThumbnailCache
 from pimusic.utils.logger import get_logger
@@ -33,6 +34,7 @@ from pimusic.ui.views.player_view import PlayerView
 from pimusic.ui.views.search_view import SearchView
 from pimusic.ui.views.queue_view import QueueView
 from pimusic.ui.views.wifi_view import WifiView
+from pimusic.ui.views.bluetooth_view import BluetoothView
 from pimusic.ui.views.settings_view import SettingsView
 
 logger = get_logger("App")
@@ -63,7 +65,13 @@ class App:
         self.playlist = PlaylistManager()
         self.youtube = YouTubeService()
         self.wifi = WifiManager()
+        self.bluetooth = BluetoothManager()
         self.player = MPVPlayer()
+
+        # Route audio according to saved preference (jack vs bluetooth)
+        init_mode = self.bluetooth.audio_output_mode
+        init_dev = self.bluetooth.get_connected_device()
+        self.player.set_audio_output(init_mode, init_dev.mac if init_dev else None)
 
         # Hook MPV track end event to advance queue
         self.player.on_track_end = self._handle_track_finished
@@ -74,7 +82,7 @@ class App:
         # Components
         self.status_bar = StatusBar()
 
-        # Bottom Navigation Bar (5 tabs across 480px width)
+        # Bottom Navigation Bar (6 tabs across 480px width)
         self.active_tab = "player"
         self.nav_buttons: Dict[str, Button] = {}
         self._setup_navigation_bar()
@@ -85,6 +93,7 @@ class App:
             "search": SearchView(self),
             "queue": QueueView(self),
             "wifi": WifiView(self),
+            "bluetooth": BluetoothView(self),
             "settings": SettingsView(self)
         }
 
@@ -92,23 +101,24 @@ class App:
         self.last_interaction_time = pygame.time.get_ticks() / 1000.0
 
     def _setup_navigation_bar(self):
-        """Construct the 5 bottom navigation buttons."""
+        """Construct the 6 bottom navigation buttons."""
         nav_y = SCREEN_HEIGHT - NAV_BAR_HEIGHT
         tab_defs = [
-            ("player", "Now Playing", "music"),
+            ("player", "Player", "music"),
             ("search", "Search", "search"),
             ("queue", "Queue", "queue"),
             ("wifi", "Wi-Fi", "wifi"),
+            ("bluetooth", "Bluetooth", "bluetooth"),
             ("settings", "Settings", "settings"),
         ]
 
-        btn_w = SCREEN_WIDTH // len(tab_defs)  # ~96px per tab
+        btn_w = SCREEN_WIDTH // len(tab_defs)  # 80px per tab
         for i, (tab_id, label, icon) in enumerate(tab_defs):
             rect = pygame.Rect(i * btn_w, nav_y, btn_w, NAV_BAR_HEIGHT)
             self.nav_buttons[tab_id] = Button(
                 rect,
                 icon=icon,
-                icon_size=20,
+                icon_size=18,
                 radius=0,
                 bg_color=COLOR_SURFACE,
                 hover_color=COLOR_SURFACE_LIGHT,
@@ -218,7 +228,8 @@ class App:
                 wifi_connected=self.wifi.is_connected(),
                 is_playing=self.player.is_playing and not self.player.is_paused,
                 current_title=title,
-                portal_detected=self.wifi.last_status.get("portal_detected", False)
+                portal_detected=self.wifi.last_status.get("portal_detected", False),
+                bt_connected=self.bluetooth.is_connected()
             )
 
             # Update queue badge count

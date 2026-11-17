@@ -24,7 +24,7 @@ Standard web browsers like Chromium easily consume 500MB to 800MB of RAM, causin
 | **SBC** | Raspberry Pi 3 Model B / B+ (1GB RAM) |
 | **Display** | 3.5" SPI TFT LCD (Resolution: 480×320) |
 | **Touch Controller** | XPT2046 / ADS7846 resistive SPI touch controller |
-| **Audio Output** | 3.5mm Analog Audio Jack (ALSA `bcm2835_audio`) |
+| **Audio Output** | 3.5mm Analog Audio Jack (ALSA) & **Bluetooth Audio (A2DP Speaker / Headphones)** |
 | **Network** | Built-in Wi-Fi / Ethernet |
 | **Storage** | MicroSD Card (8GB+ Class 10 recommended) |
 
@@ -47,6 +47,11 @@ Standard web browsers like Chromium easily consume 500MB to 800MB of RAM, causin
   - **Autentikasi Manual Bebas Jejak**: Meluncurkan browser ultra-ringan (`netsurf-gtk` / `dillo`) untuk login captive portal secara manual tanpa menyimpan kredensial.
   - **Proteksi Koneksi Aktif**: Tidak pernah memutus Wi-Fi saat pemutaran atau pencarian lagu berlangsung.
   - **100% Asynchronous**: Seluruh pemindaian dan operasi jaringan berjalan di background thread agar GUI touchscreen tidak pernah macet (*freeze*).
+- **Bluetooth Audio & Output Manager**:
+  - Pindai (*scan*) dan pasangkan (*pair*) speaker Bluetooth, headphone, atau TWS langsung dari layar sentuh.
+  - Hubungkan (*connect*) dan putuskan (*disconnect*) perangkat audio Bluetooth tanpa terminal.
+  - Tombol sakelar cepat untuk beralih antara **Jack 3.5mm** dan **Bluetooth Audio**.
+  - Indikator status Bluetooth di status bar atas (ikon Bluetooth biru saat terhubung).
 - **Status Bar & Hardware Health**: Real-time clock, Wi-Fi status icon, ALSA volume level, CPU temperature, RAM usage, and CPU load.
 - **Safe Power Controls**: Reboot and Shutdown options with touch confirmation modals.
 - **Direct Boot to Player**: Fullscreen kiosk startup via systemd without desktop environment overhead.

@@ -104,6 +104,9 @@ PACKAGES=(
     python3-pygame
     mpv
     alsa-utils
+    bluez
+    bluez-tools
+    bluez-alsa-utils
     network-manager
     libsdl2-2.0-0
     xinit
@@ -119,14 +122,26 @@ PACKAGES=(
 echo -e "[INFO] Installing: ${PACKAGES[*]}"
 apt-get "${APT_OPTS[@]}" install -y --fix-missing --no-install-recommends "${PACKAGES[@]}"
 
-# 4. Audio Configuration (3.5mm Headphone Jack)
-echo -e "\n${YELLOW}[Step 3/5] Configuring Audio Output (3.5mm Jack)...${NC}"
-# Route audio to 3.5mm jack
+# 4. Audio & Bluetooth Configuration
+echo -e "\n${YELLOW}[Step 3/5] Configuring Audio Output (3.5mm Jack & Bluetooth)...${NC}"
+# Route audio to 3.5mm jack by default
 amixer cset numid=3 1 >/dev/null 2>&1 || true
 # Unmute and set default volume to 75%
 amixer sset 'PCM' 75% unmute >/dev/null 2>&1 || true
 amixer sset 'Headphones' 75% unmute >/dev/null 2>&1 || true
-echo -e "${GREEN}[OK] Audio configured for 3.5mm analog jack.${NC}"
+
+# Add user to required groups (audio, video, input, bluetooth)
+usermod -a -G audio,video,input,bluetooth "$ACTUAL_USER" || true
+
+# Enable and start Bluetooth services
+systemctl enable bluetooth.service >/dev/null 2>&1 || true
+systemctl start bluetooth.service >/dev/null 2>&1 || true
+if systemctl list-unit-files | grep -q "bluealsa"; then
+    systemctl enable bluealsa.service >/dev/null 2>&1 || true
+    systemctl start bluealsa.service >/dev/null 2>&1 || true
+fi
+
+echo -e "${GREEN}[OK] Audio configured for 3.5mm analog jack and Bluetooth.${NC}"
 
 # 5. Python Environment & Dependencies
 echo -e "\n${YELLOW}[Step 4/5] Setting up Python Dependencies & yt-dlp...${NC}"

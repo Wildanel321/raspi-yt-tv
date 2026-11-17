@@ -236,3 +236,17 @@ class Theme:
             pygame.draw.line(surface, color, (center_x - hs + 2, center_y - hs + 2), (center_x + hs - 2, center_y + hs - 2), 2)
             pygame.draw.circle(surface, color, (center_x - 3, center_y + 3), 3, 2)
             pygame.draw.circle(surface, color, (center_x + 3, center_y - 3), 3, 2)
+
+        elif icon_name == "bluetooth":
+            # Bluetooth classic rune (B rune)
+            w = max(4, hs - 2)
+            h = hs
+            pts = [
+                (center_x - w, center_y - h // 2),
+                (center_x + w, center_y + h // 2),
+                (center_x, center_y + h),
+                (center_x, center_y - h),
+                (center_x + w, center_y - h // 2),
+                (center_x - w, center_y + h // 2),
+            ]
+            pygame.draw.lines(surface, color, False, pts, 2)

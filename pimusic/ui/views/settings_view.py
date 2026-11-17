@@ -30,7 +30,7 @@ class SettingsView(BaseView):
         self.confirm_action: Optional[str] = None  # "reboot" or "shutdown"
 
         # Action Buttons
-        btn_y = CONTENT_Y + 160
+        btn_y = CONTENT_Y + 158
         self.btn_reboot = Button(
             pygame.Rect(20, btn_y, 130, 42),
             text="Reboot Pi",
@@ -54,6 +54,17 @@ class SettingsView(BaseView):
             font_size=13,
             bg_color=COLOR_SURFACE_LIGHT,
             callback=self._exit_app
+        )
+
+        # Bluetooth Quick Access Button
+        self.btn_manage_bt = Button(
+            pygame.Rect(20, CONTENT_Y + 114, SCREEN_WIDTH - 40, 34),
+            text="Manage Bluetooth & Audio Output",
+            icon="bluetooth",
+            icon_size=14,
+            font_size=12,
+            bg_color=COLOR_SURFACE_LIGHT,
+            callback=lambda: self.app.switch_tab("bluetooth")
         )
 
         # Dialog buttons
@@ -96,6 +107,8 @@ class SettingsView(BaseView):
                 return True
             return True
 
+        if self.btn_manage_bt.handle_event(event):
+            return True
         if self.btn_reboot.handle_event(event):
             return True
         if self.btn_shutdown.handle_event(event):
@@ -108,39 +121,48 @@ class SettingsView(BaseView):
         pass
 
     def draw(self, surface: pygame.Surface):
-        # 1. System Info Card (Top 140px)
-        info_rect = pygame.Rect(10, CONTENT_Y + 10, SCREEN_WIDTH - 20, 136)
+        # 1. System Info Card (Top 96px)
+        info_rect = pygame.Rect(10, CONTENT_Y + 6, SCREEN_WIDTH - 20, 98)
         Theme.draw_rounded_rect(surface, info_rect, COLOR_SURFACE, radius=8,
                                 border_color=COLOR_SURFACE_BORDER, border_width=1)
 
         # Title
-        t_surf = Theme.get_font(14, bold=True).render(f"System Health  •  Pi Music v{APP_VERSION}", True, COLOR_TEXT_PRIMARY)
-        surface.blit(t_surf, (info_rect.left + 16, info_rect.top + 12))
+        t_surf = Theme.get_font(13, bold=True).render(f"System Health  •  Pi Music v{APP_VERSION}", True, COLOR_TEXT_PRIMARY)
+        surface.blit(t_surf, (info_rect.left + 16, info_rect.top + 8))
 
         # Metrics
         temp = SystemInfo.get_cpu_temp()
         temp_str = f"{temp:.1f} °C" if temp else "N/A"
         used_mb, total_mb, ram_pct = SystemInfo.get_ram_usage()
-        cpu_load = SystemInfo.get_cpu_load_pct()
 
-        font_lbl = Theme.get_font(12)
-        font_val = Theme.get_font(12, bold=True)
+        bt_dev = self.app.bluetooth.get_connected_device()
+        if self.app.bluetooth.audio_output_mode == "bluetooth":
+            audio_out_str = f"Bluetooth ({bt_dev.name if bt_dev else 'Connecting...'})"
+            audio_col = COLOR_SUCCESS if bt_dev else COLOR_WARNING
+        else:
+            audio_out_str = "3.5mm Analog Jack (ALSA)"
+            audio_col = COLOR_ACCENT
+
+        font_lbl = Theme.get_font(11)
+        font_val = Theme.get_font(11, bold=True)
 
         rows = [
             ("CPU Temperature:", temp_str, COLOR_WARNING if (temp and temp > 70) else COLOR_SUCCESS),
             ("RAM Usage (Pi 3):", f"{used_mb} MB / {total_mb} MB ({ram_pct}%)", COLOR_TEXT_PRIMARY),
-            ("CPU Load Average:", f"{cpu_load:.1f}%", COLOR_TEXT_PRIMARY),
-            ("Audio Output:", "3.5mm Headphone Jack (ALSA)", COLOR_ACCENT),
+            ("Active Audio Output:", audio_out_str, audio_col),
         ]
 
         for i, (lbl, val, col) in enumerate(rows):
-            y = info_rect.top + 38 + (i * 22)
+            y = info_rect.top + 30 + (i * 20)
             lbl_surf = font_lbl.render(lbl, True, COLOR_TEXT_SECONDARY)
             val_surf = font_val.render(val, True, col)
             surface.blit(lbl_surf, (info_rect.left + 16, y))
-            surface.blit(val_surf, (info_rect.left + 170, y))
+            surface.blit(val_surf, (info_rect.left + 160, y))
 
-        # 2. Power Management Buttons
+        # 2. Bluetooth quick access button
+        self.btn_manage_bt.draw(surface)
+
+        # 3. Power Management Buttons
         self.btn_reboot.draw(surface)
         self.btn_shutdown.draw(surface)
         self.btn_exit_app.draw(surface)

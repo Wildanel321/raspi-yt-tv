@@ -18,6 +18,7 @@ from pimusic.core.youtube import Track
 from pimusic.core.playlist import PlaylistManager
 from pimusic.core.system_info import SystemInfo
 from pimusic.core.wifi import WifiManager, WifiNetwork
+from pimusic.core.bluetooth import BluetoothManager, BluetoothDevice
 
 class TestPiMusicCore(unittest.TestCase):
 
@@ -120,6 +121,38 @@ class TestPiMusicCore(unittest.TestCase):
         net_sec = WifiNetwork("Secure", 80, "WPA2")
         self.assertTrue(net_open.is_open)
         self.assertFalse(net_sec.is_open)
+
+    def test_bluetooth_manager(self):
+        bm = BluetoothManager()
+        # Test default audio output preference
+        self.assertIn(bm.audio_output_mode, ["jack", "bluetooth"])
+        bm.save_audio_output_pref("bluetooth")
+        self.assertEqual(bm.audio_output_mode, "bluetooth")
+        bm.save_audio_output_pref("jack")
+        self.assertEqual(bm.audio_output_mode, "jack")
+
+        # Test BluetoothDevice representation and status
+        d1 = BluetoothDevice("FC:58:FA:12:34:56", "JBL Flip 5", paired=True, connected=False)
+        self.assertEqual(d1.mac, "FC:58:FA:12:34:56")
+        self.assertEqual(d1.name, "JBL Flip 5")
+        self.assertTrue(d1.paired)
+        self.assertFalse(d1.connected)
+
+        # Test simulation devices
+        bm._mock_simulation_devices()
+        devs = bm.get_devices()
+        self.assertGreater(len(devs), 0)
+
+        # Test connect / disconnect async
+        results = []
+        bm.connect_device_async("FC:58:FA:12:34:56", lambda success, msg: results.append(("connect", success)))
+        import time
+        time.sleep(1.2)
+        self.assertTrue(any(r[0] == "connect" for r in results))
+
+        bm.disconnect_device_async("FC:58:FA:12:34:56", lambda success, msg: results.append(("disconnect", success)))
+        time.sleep(0.5)
+        self.assertTrue(any(r[0] == "disconnect" for r in results))
 
 if __name__ == "__main__":
     unittest.main()

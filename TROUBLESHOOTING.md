@@ -211,7 +211,39 @@ pkill -f chromium || true
 
 ---
 
-## 🔄 7. How to Restart or View Systemd Service Logs
+## 🎧 7. Bluetooth Audio Troubleshooting
+
+### Symptom: Bluetooth speaker/headphones not found or failing to connect.
+
+#### Cause A: Device is not in Discovery/Pairing Mode.
+Bluetooth speakers and TWS earbuds only announce themselves when actively in pairing mode:
+- Put your speaker into pairing mode (usually by holding the Bluetooth/Power button until the LED blinks rapidly).
+- Tap **Scan** in the **Bluetooth** tab on Pi Music.
+
+#### Cause B: User lacks Bluetooth permissions.
+Ensure your user belongs to the `bluetooth` group:
+```bash
+sudo usermod -a -G bluetooth,audio $USER
+sudo systemctl restart bluetooth
+```
+
+#### Cause C: Stale pairing profile in BlueZ.
+If a device was previously paired and now fails to reconnect:
+- Tap the device in Pi Music and tap **Unpair**.
+- Or via terminal:
+```bash
+bluetoothctl remove XX:XX:XX:XX:XX:XX
+```
+- Re-scan and pair the device again.
+
+#### Cause D: Bluetooth audio stutter on Raspberry Pi 3.
+Raspberry Pi 3 shares its internal 2.4GHz antenna between Wi-Fi and Bluetooth. Under heavy 2.4GHz Wi-Fi traffic:
+- Keep the Bluetooth speaker within 2–3 meters of the Raspberry Pi.
+- If possible, connect the Pi via Ethernet or use a 5GHz Wi-Fi USB dongle to leave 2.4GHz entirely for Bluetooth.
+
+---
+
+## 🔄 8. How to Restart or View Systemd Service Logs
 
 ```bash
 # View live service logs with timestamps

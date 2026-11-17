@@ -38,6 +38,7 @@ class MPVPlayer:
         self.duration = 0.0
         self.volume = DEFAULT_VOLUME
         self.is_buffering = False
+        self.current_stream_url: Optional[str] = None
         self.has_mpv = shutil.which("mpv") is not None
 
         # Callbacks
@@ -205,6 +206,7 @@ class MPVPlayer:
     def play_url(self, stream_url: str):
         """Load and start playing an audio stream URL."""
         logger.info("MPV: Loading audio stream...")
+        self.current_stream_url = stream_url
         self.is_playing = True
         self.is_paused = False
         self.current_time = 0.0
@@ -216,6 +218,23 @@ class MPVPlayer:
             # Simulation playback
             self.duration = 240.0
             self.current_time = 0.0
+
+    def set_audio_output(self, mode: str, bluetooth_mac: Optional[str] = None):
+        """
+        Switches audio output device between 'jack' (3.5mm analog) and 'bluetooth'.
+        Updates the running MPV daemon via IPC or restarts with the new device.
+        """
+        if mode == "bluetooth":
+            if bluetooth_mac:
+                self.alsa_device = f"alsa/bluealsa:DEV={bluetooth_mac.upper()},PROFILE=a2dp"
+            else:
+                self.alsa_device = "alsa/bluealsa"
+        else:
+            self.alsa_device = "alsa/default"
+
+        logger.info(f"Setting MPV audio device to {self.alsa_device}")
+        if self._connected:
+            self._send_command(["set_property", "audio-device", self.alsa_device])
 
     def pause(self):
         """Pause playback."""
