@@ -1,0 +1,21 @@
+[Unit]
+Description=Pi Music - YouTube Music Player for Raspberry Pi
+After=network-online.target sound.target
+Wants=network-online.target sound.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/raspi-yt-tv
+Environment=PYTHONUNBUFFERED=1
+Environment=DISPLAY=:0
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+ExecStart=/bin/bash /home/pi/raspi-yt-tv/scripts/start.sh
+Restart=on-failure
+RestartSec=5s
+KillMode=mixed
+TimeoutStopSec=10s
+
+[Install]
+WantedBy=multi-user.target
