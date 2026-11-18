@@ -92,6 +92,65 @@ class YouTubeService:
             "socket_timeout": 8,
         }
 
+    def search_sync(self, query: str) -> List[Track]:
+        """Synchronously search YouTube or resolve a direct YouTube URL."""
+        query = query.strip()
+        if not query:
+            return []
+
+        logger.info(f"Searching YouTube for: '{query}'...")
+        tracks: List[Track] = []
+        import yt_dlp
+
+        is_url = query.startswith(("http://", "https://")) and (
+            "youtube.com" in query or "youtu.be" in query or "music.youtube.com" in query
+        )
+
+        ydl_opts = dict(self._base_ydl_opts)
+        ydl_opts["extract_flat"] = not is_url
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            target = query if is_url else f"ytsearch{MAX_SEARCH_RESULTS}:{query}"
+            res = ydl.extract_info(target, download=False)
+            if not res:
+                return []
+
+            entries = res.get("entries", []) if "entries" in res else [res]
+
+            for entry in entries:
+                if not entry:
+                    continue
+                video_id = entry.get("id") or entry.get("url")
+                if not video_id:
+                    continue
+
+                title = entry.get("title", "Unknown Title")
+                artist = entry.get("uploader") or entry.get("channel", "YouTube")
+                duration = entry.get("duration", 0)
+
+                thumb = ""
+                thumbnails = entry.get("thumbnails", [])
+                if thumbnails:
+                    thumb = thumbnails[-1].get("url", "")
+                elif entry.get("thumbnail"):
+                    thumb = entry.get("thumbnail")
+                else:
+                    thumb = f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
+
+                tracks.append(
+                    Track(
+                        video_id=video_id,
+                        title=title,
+                        artist=artist,
+                        duration=int(duration) if duration else 0,
+                        thumbnail_url=thumb,
+                        webpage_url=f"https://www.youtube.com/watch?v={video_id}"
+                    )
+                )
+
+        logger.info(f"Found {len(tracks)} results for '{query}'")
+        return tracks
+
     def search_async(
         self,
         query: str,
@@ -105,53 +164,8 @@ class YouTubeService:
             return
 
         def _worker():
-            logger.info(f"Searching YouTube for: '{query}'...")
-            tracks: List[Track] = []
             try:
-                import yt_dlp
-
-                ydl_opts = dict(self._base_ydl_opts)
-                ydl_opts["extract_flat"] = True
-
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    search_str = f"ytsearch{MAX_SEARCH_RESULTS}:{query}"
-                    res = ydl.extract_info(search_str, download=False)
-                    entries = res.get("entries", []) if res else []
-
-                    for entry in entries:
-                        if not entry:
-                            continue
-                        video_id = entry.get("id") or entry.get("url")
-                        if not video_id:
-                            continue
-
-                        # Extract metadata
-                        title = entry.get("title", "Unknown Title")
-                        artist = entry.get("uploader") or entry.get("channel", "YouTube")
-                        duration = entry.get("duration", 0)
-
-                        # Extract thumbnail
-                        thumb = ""
-                        thumbnails = entry.get("thumbnails", [])
-                        if thumbnails:
-                            thumb = thumbnails[-1].get("url", "")
-                        elif entry.get("thumbnail"):
-                            thumb = entry.get("thumbnail")
-                        else:
-                            thumb = f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg"
-
-                        tracks.append(
-                            Track(
-                                video_id=video_id,
-                                title=title,
-                                artist=artist,
-                                duration=int(duration) if duration else 0,
-                                thumbnail_url=thumb,
-                                webpage_url=f"https://www.youtube.com/watch?v={video_id}"
-                            )
-                        )
-
-                logger.info(f"Found {len(tracks)} results for '{query}'")
+                tracks = self.search_sync(query)
                 callback(tracks)
             except Exception as e:
                 logger.error(f"YouTube search error: {e}")

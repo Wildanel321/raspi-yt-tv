@@ -1,0 +1,1903 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#121212">
+  <title>Pi Music Remote</title>
+  <style>
+    :root {
+      --bg: #121212;
+      --surface: #1e1e1e;
+      --surface-raised: #282828;
+      --surface-hover: #323232;
+      --border: #383838;
+      --accent: #ff2121;
+      --accent-hover: #e01b1b;
+      --text: #ffffff;
+      --text-secondary: #b5b5b5;
+      --text-muted: #8a8a8a;
+      --ok: #4caf50;
+      --warn: #ffb300;
+      --danger: #f44336;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --nav-height: 64px;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100%;
+      overflow-x: hidden;
+    }
+
+    button, input, select, a[href], label[for] {
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    input[type="text"], input[type="search"], input[type="password"] {
+      cursor: text;
+    }
+
+    button:disabled, input:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    :focus-visible {
+      outline: 2px solid #ffffff;
+      outline-offset: 2px;
+    }
+
+    .tabular {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    /* Header */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background-color: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      background-color: var(--accent);
+      color: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .brand-title {
+      margin: 0;
+      font-size: clamp(1rem, 2.5vw, 1.15rem);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+    }
+
+    .status-strip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      background-color: var(--surface-raised);
+      border: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--ok);
+      flex-shrink: 0;
+    }
+
+    .dot.offline { background-color: var(--danger); }
+    .dot.warn { background-color: var(--warn); }
+
+    /* Offline / Toast banners */
+    .banner {
+      display: none;
+      background-color: #3a1616;
+      border-bottom: 1px solid var(--danger);
+      color: #ffffff;
+      padding: 10px 16px;
+      font-size: 0.9rem;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .banner.visible {
+      display: flex;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: calc(var(--nav-height) + 16px + env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+      background-color: var(--surface-raised);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 16px;
+      font-size: 0.9rem;
+      max-width: calc(100vw - 32px);
+      z-index: 40;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+
+    /* Main Shell */
+    .app-main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 16px 16px calc(var(--nav-height) + 24px + env(safe-area-inset-bottom));
+    }
+
+    .desktop-tabs {
+      display: none;
+    }
+
+    .panel {
+      display: none;
+    }
+
+    .panel.active {
+      display: block;
+    }
+
+    /* Cards & Sections */
+    .card {
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+    }
+
+    .card + .card {
+      margin-top: 14px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .muted {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    /* Player Deck */
+    .now-playing {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .track-hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 14px;
+    }
+
+    .cover-wrap {
+      width: min(220px, 60vw);
+      aspect-ratio: 1 / 1;
+      border-radius: var(--radius-md);
+      background-color: var(--surface-raised);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .cover-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+
+    .cover-img.loaded {
+      display: block;
+    }
+
+    .cover-placeholder {
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .track-meta {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .track-title {
+      margin: 0;
+      font-size: clamp(1.05rem, 3.2vw, 1.3rem);
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .track-artist {
+      margin: 4px 0 0;
+      font-size: 0.92rem;
+      color: var(--text-secondary);
+      overflow-wrap: anywhere;
+    }
+
+    .track-status-line {
+      margin: 8px 0 0;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      min-height: 1.2em;
+    }
+
+    /* Sliders */
+    .slider-block {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .time-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 32px;
+      background: transparent;
+      margin: 0;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 3px;
+      background: var(--surface-hover);
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 2px solid var(--accent);
+      margin-top: -7px;
+    }
+
+    input[type="range"]::-moz-range-track {
+      height: 6px;
+      border-radius: 3px;
+      background: var(--surface-hover);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 2px solid var(--accent);
+    }
+
+    /* Transport Buttons */
+    .transport {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 44px;
+      min-width: 44px;
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background-color: var(--surface-raised);
+      color: var(--text);
+      font-size: 0.92rem;
+      font-weight: 600;
+      transition: background-color 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
+    }
+
+    .btn:hover:not(:disabled) {
+      background-color: var(--surface-hover);
+    }
+
+    .btn:active:not(:disabled) {
+      transform: scale(0.97);
+    }
+
+    .btn-primary {
+      background-color: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background-color: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    .btn-play {
+      min-width: 68px;
+      min-height: 54px;
+      padding: 0 20px;
+    }
+
+    .btn-icon {
+      min-width: 48px;
+      min-height: 48px;
+      padding: 0;
+    }
+
+    .btn-toggle.on {
+      border-color: var(--accent);
+      background-color: #321818;
+      color: #ffffff;
+    }
+
+    .btn-danger {
+      border-color: #6b2424;
+      background-color: #361717;
+      color: #ffb3b3;
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background-color: #4d1e1e;
+    }
+
+    .btn-sm {
+      min-height: 44px;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+    }
+
+    .sub-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .volume-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    .volume-val {
+      min-width: 42px;
+      text-align: right;
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+    }
+
+    .output-switch {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    /* Search Form */
+    .search-form {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .input-field {
+      flex: 1 1 auto;
+      min-width: 0;
+      min-height: 46px;
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background-color: var(--bg);
+      color: var(--text);
+      font-size: 0.96rem;
+    }
+
+    .input-field::placeholder {
+      color: var(--text-muted);
+    }
+
+    /* Track / Device Lists */
+    .item-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .track-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+      border-radius: var(--radius-md);
+      background-color: var(--surface-raised);
+      border: 1px solid var(--border);
+    }
+
+    .track-row.current {
+      border-color: var(--accent);
+      background-color: #281919;
+    }
+
+    .thumb {
+      width: 52px;
+      height: 52px;
+      border-radius: var(--radius-sm);
+      object-fit: cover;
+      background-color: var(--bg);
+      flex-shrink: 0;
+    }
+
+    .row-info {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .row-title {
+      font-size: 0.94rem;
+      font-weight: 600;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .row-sub {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .row-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    /* Empty / Loading / Error states */
+    .state-box {
+      padding: 28px 16px;
+      text-align: center;
+      border: 1px dashed var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .state-box.error {
+      border-color: var(--danger);
+      color: #ffb8b8;
+    }
+
+    /* Device / System info */
+    .kv-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+    }
+
+    .kv-item {
+      background-color: var(--surface-raised);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+    }
+
+    .kv-label {
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      margin-bottom: 2px;
+    }
+
+    .kv-value {
+      font-size: 1rem;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .wifi-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .form-label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    /* Bottom Mobile Navigation */
+    .bottom-nav {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 30;
+      background-color: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+    }
+
+    .nav-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      min-height: 50px;
+      border: 0;
+      border-radius: var(--radius-md);
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      font-weight: 600;
+      position: relative;
+      padding: 4px;
+    }
+
+    .nav-btn:hover {
+      background-color: var(--surface-raised);
+      color: var(--text);
+    }
+
+    .nav-btn.active {
+      color: #ffffff;
+      background-color: var(--surface-raised);
+      box-shadow: inset 0 -2px 0 var(--accent);
+    }
+
+    .badge-count {
+      position: absolute;
+      top: 4px;
+      right: calc(50% - 22px);
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      border-radius: 9px;
+      background-color: var(--accent);
+      color: #ffffff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .badge-count.visible {
+      display: inline-flex;
+    }
+
+    /* Confirmation Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background-color: rgba(0, 0, 0, 0.72);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-box {
+      width: 100%;
+      max-width: 380px;
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+    }
+
+    .modal-box h2 {
+      margin: 0 0 8px;
+      font-size: 1.1rem;
+    }
+
+    .modal-box p {
+      margin: 0 0 18px;
+      color: var(--text-secondary);
+      font-size: 0.92rem;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    /* Tablet Breakpoint */
+    @media (min-width: 720px) {
+      .app-main {
+        padding: 20px 24px calc(var(--nav-height) + 28px);
+      }
+
+      .track-hero {
+        flex-direction: row;
+        text-align: left;
+        align-items: center;
+      }
+
+      .cover-wrap {
+        width: 148px;
+      }
+    }
+
+    /* Desktop Deck Breakpoint */
+    @media (min-width: 1024px) {
+      .bottom-nav {
+        display: none;
+      }
+
+      .toast {
+        bottom: 24px;
+      }
+
+      .app-main {
+        padding: 24px;
+        display: grid;
+        grid-template-columns: 390px 1fr;
+        gap: 20px;
+        align-items: start;
+      }
+
+      #panel-player {
+        display: block;
+        position: sticky;
+        top: 72px;
+      }
+
+      .track-hero {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .cover-wrap {
+        width: 210px;
+      }
+
+      .right-pane {
+        min-width: 0;
+      }
+
+      .desktop-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+
+      .desktop-tab-btn {
+        min-height: 44px;
+        padding: 8px 18px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border);
+        background-color: var(--surface);
+        color: var(--text-secondary);
+        font-size: 0.92rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .desktop-tab-btn:hover {
+        background-color: var(--surface-raised);
+        color: var(--text);
+      }
+
+      .desktop-tab-btn.active {
+        background-color: var(--surface-raised);
+        border-color: var(--accent);
+        color: #ffffff;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M9 18V5l12-2v13"></path>
+          <circle cx="6" cy="18" r="3"></circle>
+          <circle cx="18" cy="16" r="3"></circle>
+        </svg>
+      </span>
+      <h1 class="brand-title">Pi Music Remote</h1>
+    </div>
+    <div class="status-strip">
+      <span class="status-chip" id="chip-conn">
+        <span class="dot" id="dot-conn" aria-hidden="true"></span>
+        <span id="label-mode">Terhubung</span>
+      </span>
+      <span class="status-chip tabular" id="chip-temp" aria-label="Suhu CPU">-- C</span>
+    </div>
+  </header>
+
+  <div class="banner" id="offline-banner" role="alert">
+    <span id="offline-text">Koneksi ke Raspberry Pi terputus. Mencoba menyambungkan ulang...</span>
+    <button type="button" class="btn btn-sm" id="btn-retry-conn">Coba Lagi</button>
+  </div>
+
+  <main class="app-main">
+    <!-- Left / Player Panel -->
+    <section id="panel-player" class="panel active" aria-label="Pemutar Musik">
+      <div class="card now-playing">
+        <div class="track-hero">
+          <div class="cover-wrap">
+            <img id="player-cover" class="cover-img" src="" alt="Sampul lagu" width="220" height="220" fetchpriority="high">
+            <div id="player-cover-fallback" class="cover-placeholder" aria-hidden="true">
+              <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M9 18V5l12-2v13"></path>
+                <circle cx="6" cy="18" r="3"></circle>
+                <circle cx="18" cy="16" r="3"></circle>
+              </svg>
+            </div>
+          </div>
+          <div class="track-meta">
+            <h2 class="track-title" id="player-title">Belum ada lagu diputar</h2>
+            <p class="track-artist" id="player-artist">Cari lagu di tab Cari untuk mulai memutar (bebas iklan)</p>
+            <p class="track-status-line" id="player-status"></p>
+          </div>
+        </div>
+
+        <div class="slider-block">
+          <label for="seek-slider" class="sr-only">Posisi lagu</label>
+          <input type="range" id="seek-slider" min="0" max="100" value="0" step="1">
+          <div class="time-row tabular">
+            <span id="time-elapsed">00:00</span>
+            <span id="time-total">--:--</span>
+          </div>
+        </div>
+
+        <div class="transport">
+          <button type="button" class="btn btn-icon" id="btn-prev" aria-label="Lagu sebelumnya">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"></path>
+            </svg>
+          </button>
+          <button type="button" class="btn btn-primary btn-play" id="btn-toggle" aria-label="Putar atau jeda">
+            <svg id="icon-play" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M8 5v14l11-7z"></path>
+            </svg>
+            <svg id="icon-pause" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="display:none">
+              <path d="M6 5h4v14H6zm8 0h4v14h-4z"></path>
+            </svg>
+          </button>
+          <button type="button" class="btn btn-icon" id="btn-next" aria-label="Lagu berikutnya">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"></path>
+            </svg>
+          </button>
+          <button type="button" class="btn btn-icon" id="btn-stop" aria-label="Berhenti">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <rect x="6" y="6" width="12" height="12"></rect>
+            </svg>
+          </button>
+        </div>
+
+        <div class="sub-controls">
+          <button type="button" class="btn btn-sm btn-toggle" id="btn-repeat">Ulang: Mati</button>
+          <button type="button" class="btn btn-sm btn-toggle" id="btn-shuffle">Acak: Mati</button>
+          <button type="button" class="btn btn-sm" id="btn-quick-search">Cari Lagu</button>
+        </div>
+
+        <div class="volume-row">
+          <button type="button" class="btn btn-sm" id="btn-vol-down" aria-label="Kurangi volume">-</button>
+          <label for="volume-slider" class="sr-only">Volume</label>
+          <input type="range" id="volume-slider" min="0" max="100" value="70" step="1">
+          <button type="button" class="btn btn-sm" id="btn-vol-up" aria-label="Tambah volume">+</button>
+          <span class="volume-val tabular" id="volume-label">70%</span>
+        </div>
+
+        <div>
+          <div class="kv-label" style="margin-bottom:6px">Output Audio</div>
+          <div class="output-switch">
+            <button type="button" class="btn btn-sm btn-toggle" id="btn-out-jack">Jack 3.5mm</button>
+            <button type="button" class="btn btn-sm btn-toggle" id="btn-out-bt">Bluetooth</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right / Tabbed Workspace -->
+    <div class="right-pane">
+      <div class="desktop-tabs" role="tablist" aria-label="Navigasi desktop">
+        <button type="button" class="desktop-tab-btn active" data-tab="search" role="tab" aria-selected="true">Cari YouTube</button>
+        <button type="button" class="desktop-tab-btn" data-tab="queue" role="tab" aria-selected="false">Antrean (<span id="desktop-queue-count">0</span>)</button>
+        <button type="button" class="desktop-tab-btn" data-tab="device" role="tab" aria-selected="false">Perangkat &amp; Sistem</button>
+      </div>
+
+      <!-- Search Panel -->
+      <section id="panel-search" class="panel" aria-label="Cari Lagu YouTube">
+        <div class="card">
+          <div class="section-header">
+            <h2 class="section-title">Cari YouTube (Audio Bebas Iklan)</h2>
+          </div>
+          <form id="search-form" class="search-form">
+            <label for="search-input" class="sr-only">Judul lagu, artis, atau link YouTube</label>
+            <input type="search" id="search-input" class="input-field" placeholder="Ketik judul lagu, artis, atau tempel link YouTube..." autocomplete="off">
+            <button type="submit" class="btn btn-primary" id="btn-search-submit">Cari</button>
+          </form>
+          <div id="search-results">
+            <div class="state-box">
+              <span>Masukkan judul lagu atau tempel tautan YouTube untuk mencari.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Queue Panel -->
+      <section id="panel-queue" class="panel" aria-label="Antrean Putar">
+        <div class="card">
+          <div class="section-header">
+            <h2 class="section-title">Antrean Putar (<span id="queue-title-count" class="tabular">0</span>)</h2>
+            <button type="button" class="btn btn-sm btn-danger" id="btn-queue-clear">Kosongkan</button>
+          </div>
+          <div id="queue-container">
+            <div class="state-box">
+              <span>Antrean masih kosong. Cari lagu untuk mulai memutar.</span>
+              <button type="button" class="btn btn-sm btn-primary" data-jump-tab="search">Buka Pencarian</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Device Panel (Bluetooth, Wi-Fi, System) -->
+      <section id="panel-device" class="panel" aria-label="Pengaturan Perangkat">
+        <div class="card">
+          <div class="section-header">
+            <h2 class="section-title">Bluetooth Audio</h2>
+            <button type="button" class="btn btn-sm" id="btn-bt-scan">Pindai Bluetooth</button>
+          </div>
+          <p class="muted" id="bt-status-text" style="margin:0 0 12px">Memuat status Bluetooth...</p>
+          <div id="bt-list">
+            <div class="state-box"><span>Belum ada perangkat Bluetooth terdeteksi. Tekan Pindai Bluetooth.</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-header">
+            <h2 class="section-title">Jaringan Wi-Fi</h2>
+            <button type="button" class="btn btn-sm" id="btn-wifi-scan">Pindai Wi-Fi</button>
+          </div>
+          <p class="muted" id="wifi-status-text" style="margin:0 0 12px">Memuat status Wi-Fi...</p>
+          <div id="wifi-list"></div>
+          <form id="wifi-connect-form" class="wifi-form">
+            <label class="form-label" for="wifi-ssid">
+              Nama Wi-Fi (SSID)
+              <input type="text" id="wifi-ssid" class="input-field" placeholder="Pilih dari hasil pindai atau ketik SSID">
+            </label>
+            <label class="form-label" for="wifi-pass">
+              Kata Sandi Wi-Fi (kosongkan jika jaringan terbuka)
+              <input type="password" id="wifi-pass" class="input-field" placeholder="Kata sandi Wi-Fi">
+            </label>
+            <div>
+              <button type="submit" class="btn btn-primary" id="btn-wifi-connect">Hubungkan Wi-Fi</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="section-header">
+            <h2 class="section-title">Status Raspberry Pi</h2>
+          </div>
+          <div class="kv-grid">
+            <div class="kv-item">
+              <div class="kv-label">Mode Tampilan</div>
+              <div class="kv-value" id="sys-display">--</div>
+            </div>
+            <div class="kv-item">
+              <div class="kv-label">Alamat Web</div>
+              <div class="kv-value tabular" id="sys-url">--</div>
+            </div>
+            <div class="kv-item">
+              <div class="kv-label">Suhu CPU</div>
+              <div class="kv-value tabular" id="sys-temp">--</div>
+            </div>
+            <div class="kv-item">
+              <div class="kv-label">Memori RAM</div>
+              <div class="kv-value tabular" id="sys-ram">--</div>
+            </div>
+            <div class="kv-item">
+              <div class="kv-label">Beban CPU</div>
+              <div class="kv-value tabular" id="sys-cpu">--</div>
+            </div>
+            <div class="kv-item">
+              <div class="kv-label">Output MPV</div>
+              <div class="kv-value" id="sys-audio">--</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap">
+            <button type="button" class="btn btn-sm" id="btn-reboot">Mulai Ulang Pi</button>
+            <button type="button" class="btn btn-sm btn-danger" id="btn-shutdown">Matikan Pi</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <nav class="bottom-nav" aria-label="Navigasi utama">
+    <button type="button" class="nav-btn active" data-tab="player">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M9 18V5l12-2v13"></path>
+        <circle cx="6" cy="18" r="3"></circle>
+        <circle cx="18" cy="16" r="3"></circle>
+      </svg>
+      <span>Player</span>
+    </button>
+    <button type="button" class="nav-btn" data-tab="search">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"></circle>
+        <path d="m20 20-3.5-3.5"></path>
+      </svg>
+      <span>Cari</span>
+    </button>
+    <button type="button" class="nav-btn" data-tab="queue">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <line x1="8" y1="6" x2="21" y2="6"></line>
+        <line x1="8" y1="12" x2="21" y2="12"></line>
+        <line x1="8" y1="18" x2="21" y2="18"></line>
+        <circle cx="4" cy="6" r="1"></circle>
+        <circle cx="4" cy="12" r="1"></circle>
+        <circle cx="4" cy="18" r="1"></circle>
+      </svg>
+      <span>Antrean</span>
+      <span class="badge-count tabular" id="nav-queue-badge">0</span>
+    </button>
+    <button type="button" class="nav-btn" data-tab="device">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+      <span>Perangkat</span>
+    </button>
+  </nav>
+
+  <div class="modal-backdrop" id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-box">
+      <h2 id="modal-title">Konfirmasi</h2>
+      <p id="modal-desc"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-sm" id="modal-cancel">Batal</button>
+        <button type="button" class="btn btn-sm btn-danger" id="modal-confirm">Ya, Lanjutkan</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      const state = {
+        activeTab: "player",
+        desktopRightTab: "search",
+        isSeeking: false,
+        isAdjustingVol: false,
+        lastCoverUrl: "",
+        lastQueueKey: "",
+        lastState: null,
+        pendingModalAction: null,
+        toastTimer: null,
+        pollTimer: null
+      };
+
+      const el = {
+        dotConn: document.getElementById("dot-conn"),
+        labelMode: document.getElementById("label-mode"),
+        chipTemp: document.getElementById("chip-temp"),
+        offlineBanner: document.getElementById("offline-banner"),
+        btnRetryConn: document.getElementById("btn-retry-conn"),
+        toast: document.getElementById("toast"),
+
+        playerCover: document.getElementById("player-cover"),
+        playerCoverFallback: document.getElementById("player-cover-fallback"),
+        playerTitle: document.getElementById("player-title"),
+        playerArtist: document.getElementById("player-artist"),
+        playerStatus: document.getElementById("player-status"),
+        seekSlider: document.getElementById("seek-slider"),
+        timeElapsed: document.getElementById("time-elapsed"),
+        timeTotal: document.getElementById("time-total"),
+        btnPrev: document.getElementById("btn-prev"),
+        btnToggle: document.getElementById("btn-toggle"),
+        iconPlay: document.getElementById("icon-play"),
+        iconPause: document.getElementById("icon-pause"),
+        btnNext: document.getElementById("btn-next"),
+        btnStop: document.getElementById("btn-stop"),
+        btnRepeat: document.getElementById("btn-repeat"),
+        btnShuffle: document.getElementById("btn-shuffle"),
+        btnQuickSearch: document.getElementById("btn-quick-search"),
+        btnVolDown: document.getElementById("btn-vol-down"),
+        btnVolUp: document.getElementById("btn-vol-up"),
+        volumeSlider: document.getElementById("volume-slider"),
+        volumeLabel: document.getElementById("volume-label"),
+        btnOutJack: document.getElementById("btn-out-jack"),
+        btnOutBt: document.getElementById("btn-out-bt"),
+
+        searchForm: document.getElementById("search-form"),
+        searchInput: document.getElementById("search-input"),
+        btnSearchSubmit: document.getElementById("btn-search-submit"),
+        searchResults: document.getElementById("search-results"),
+
+        queueTitleCount: document.getElementById("queue-title-count"),
+        desktopQueueCount: document.getElementById("desktop-queue-count"),
+        navQueueBadge: document.getElementById("nav-queue-badge"),
+        btnQueueClear: document.getElementById("btn-queue-clear"),
+        queueContainer: document.getElementById("queue-container"),
+
+        btnBtScan: document.getElementById("btn-bt-scan"),
+        btStatusText: document.getElementById("bt-status-text"),
+        btList: document.getElementById("bt-list"),
+
+        btnWifiScan: document.getElementById("btn-wifi-scan"),
+        wifiStatusText: document.getElementById("wifi-status-text"),
+        wifiList: document.getElementById("wifi-list"),
+        wifiForm: document.getElementById("wifi-connect-form"),
+        wifiSsid: document.getElementById("wifi-ssid"),
+        wifiPass: document.getElementById("wifi-pass"),
+
+        sysDisplay: document.getElementById("sys-display"),
+        sysUrl: document.getElementById("sys-url"),
+        sysTemp: document.getElementById("sys-temp"),
+        sysRam: document.getElementById("sys-ram"),
+        sysCpu: document.getElementById("sys-cpu"),
+        sysAudio: document.getElementById("sys-audio"),
+        btnReboot: document.getElementById("btn-reboot"),
+        btnShutdown: document.getElementById("btn-shutdown"),
+
+        modal: document.getElementById("confirm-modal"),
+        modalTitle: document.getElementById("modal-title"),
+        modalDesc: document.getElementById("modal-desc"),
+        modalCancel: document.getElementById("modal-cancel"),
+        modalConfirm: document.getElementById("modal-confirm")
+      };
+
+      function showToast(msg) {
+        el.toast.textContent = msg;
+        el.toast.classList.add("show");
+        clearTimeout(state.toastTimer);
+        state.toastTimer = setTimeout(function () {
+          el.toast.classList.remove("show");
+        }, 2600);
+      }
+
+      function fmtTime(sec) {
+        if (!sec || sec < 0 || !isFinite(sec)) return "00:00";
+        const total = Math.floor(sec);
+        const h = Math.floor(total / 3600);
+        const m = Math.floor((total % 3600) / 60);
+        const s = total % 60;
+        const mm = String(m).padStart(2, "0");
+        const ss = String(s).padStart(2, "0");
+        return h > 0 ? h + ":" + mm + ":" + ss : mm + ":" + ss;
+      }
+
+      async function api(path, options) {
+        const opts = Object.assign({ headers: {} }, options || {});
+        if (opts.body && typeof opts.body !== "string") {
+          opts.headers["Content-Type"] = "application/json";
+          opts.body = JSON.stringify(opts.body);
+        }
+        const resp = await fetch(path, opts);
+        const data = await resp.json().catch(function () { return {}; });
+        if (!resp.ok) {
+          throw new Error(data.error || ("HTTP " + resp.status));
+        }
+        return data;
+      }
+
+      function isDesktopLayout() {
+        return window.matchMedia("(min-width: 1024px)").matches;
+      }
+
+      function setTab(tab) {
+        if (isDesktopLayout()) {
+          if (tab !== "player") {
+            state.desktopRightTab = tab;
+          }
+          state.activeTab = state.desktopRightTab;
+        } else {
+          state.activeTab = tab;
+          if (tab !== "player") {
+            state.desktopRightTab = tab;
+          }
+        }
+        applyPanels();
+        if (tab === "device") {
+          loadBluetoothDevices();
+          loadWifiNetworks();
+        }
+        if (tab === "search") {
+          setTimeout(function () { el.searchInput.focus(); }, 40);
+        }
+      }
+
+      function applyPanels() {
+        const desktop = isDesktopLayout();
+        const panels = ["player", "search", "queue", "device"];
+        panels.forEach(function (id) {
+          const node = document.getElementById("panel-" + id);
+          if (!node) return;
+          if (desktop) {
+            node.classList.toggle("active", id === "player" || id === state.desktopRightTab);
+          } else {
+            node.classList.toggle("active", id === state.activeTab);
+          }
+        });
+
+        document.querySelectorAll(".bottom-nav .nav-btn").forEach(function (btn) {
+          const active = btn.dataset.tab === state.activeTab;
+          btn.classList.toggle("active", active);
+          btn.setAttribute("aria-current", active ? "page" : "false");
+        });
+
+        document.querySelectorAll(".desktop-tab-btn").forEach(function (btn) {
+          const active = btn.dataset.tab === state.desktopRightTab;
+          btn.classList.toggle("active", active);
+          btn.setAttribute("aria-selected", active ? "true" : "false");
+        });
+      }
+
+      function renderState(data) {
+        state.lastState = data;
+        el.offlineBanner.classList.remove("visible");
+        el.dotConn.classList.remove("offline");
+
+        const sys = data.system || {};
+        const p = data.player || {};
+        const pl = data.playlist || {};
+        const tr = data.current_track;
+        const bt = data.bluetooth || {};
+        const wifi = data.wifi || {};
+
+        el.labelMode.textContent = sys.headless ? "Mode Web (Tanpa HDMI)" : "HDMI + Web";
+        el.chipTemp.textContent = sys.cpu_temp !== null && sys.cpu_temp !== undefined
+          ? sys.cpu_temp + " C"
+          : "Pi Ready";
+
+        // Now playing
+        if (tr) {
+          el.playerTitle.textContent = tr.title || "Tanpa Judul";
+          el.playerArtist.textContent = tr.artist || "YouTube";
+          if (tr.thumbnail_url && tr.thumbnail_url !== state.lastCoverUrl) {
+            state.lastCoverUrl = tr.thumbnail_url;
+            el.playerCover.src = tr.thumbnail_url;
+            el.playerCover.classList.add("loaded");
+            el.playerCoverFallback.style.display = "none";
+          } else if (!tr.thumbnail_url) {
+            state.lastCoverUrl = "";
+            el.playerCover.classList.remove("loaded");
+            el.playerCoverFallback.style.display = "flex";
+          }
+        } else {
+          state.lastCoverUrl = "";
+          el.playerCover.classList.remove("loaded");
+          el.playerCoverFallback.style.display = "flex";
+          el.playerTitle.textContent = "Belum ada lagu diputar";
+          el.playerArtist.textContent = "Cari lagu di tab Cari untuk mulai memutar (bebas iklan)";
+        }
+
+        if (p.is_buffering) {
+          el.playerStatus.textContent = "Memuat aliran audio...";
+        } else if (p.is_playing && !p.is_paused) {
+          el.playerStatus.textContent = "Sedang diputar";
+        } else if (p.is_playing && p.is_paused) {
+          el.playerStatus.textContent = "Dijeda";
+        } else {
+          el.playerStatus.textContent = "";
+        }
+
+        const isActivePlaying = Boolean(p.is_playing && !p.is_paused);
+        el.iconPlay.style.display = isActivePlaying ? "none" : "block";
+        el.iconPause.style.display = isActivePlaying ? "block" : "none";
+        el.btnToggle.setAttribute("aria-label", isActivePlaying ? "Jeda lagu" : "Putar lagu");
+
+        const duration = Number(p.duration) || 0;
+        const currentTime = Number(p.current_time) || 0;
+        if (!state.isSeeking) {
+          el.seekSlider.max = duration > 0 ? Math.floor(duration) : 100;
+          el.seekSlider.value = duration > 0 ? Math.min(Math.floor(currentTime), Math.floor(duration)) : 0;
+          el.seekSlider.disabled = duration <= 0;
+          el.timeElapsed.textContent = fmtTime(currentTime);
+        }
+        el.timeTotal.textContent = duration > 0 ? fmtTime(duration) : "--:--";
+
+        if (!state.isAdjustingVol) {
+          const vol = Number(p.volume);
+          if (!isNaN(vol)) {
+            el.volumeSlider.value = vol;
+            el.volumeLabel.textContent = vol + "%";
+          }
+        }
+
+        const repeatLabels = { off: "Ulang: Mati", all: "Ulang: Semua", one: "Ulang: 1 Lagu" };
+        el.btnRepeat.textContent = repeatLabels[pl.repeat_mode] || "Ulang: Mati";
+        el.btnRepeat.classList.toggle("on", pl.repeat_mode !== "off");
+
+        el.btnShuffle.textContent = pl.shuffle ? "Acak: Aktif" : "Acak: Mati";
+        el.btnShuffle.classList.toggle("on", Boolean(pl.shuffle));
+
+        const outMode = bt.audio_output || "jack";
+        el.btnOutJack.classList.toggle("on", outMode === "jack");
+        el.btnOutBt.classList.toggle("on", outMode === "bluetooth");
+
+        // Queue
+        const queue = Array.isArray(pl.queue) ? pl.queue : [];
+        el.queueTitleCount.textContent = String(queue.length);
+        el.desktopQueueCount.textContent = String(queue.length);
+        el.navQueueBadge.textContent = String(queue.length);
+        el.navQueueBadge.classList.toggle("visible", queue.length > 0);
+
+        const queueKey = JSON.stringify(queue.map(function (q) {
+          return q.video_id + ":" + q.index + ":" + (q.is_current ? 1 : 0);
+        }));
+        if (queueKey !== state.lastQueueKey) {
+          state.lastQueueKey = queueKey;
+          renderQueue(queue);
+        }
+
+        // System stats
+        el.sysDisplay.textContent = sys.headless ? "Headless (Web)" : "HDMI + Web";
+        el.sysUrl.textContent = "http://" + (sys.ip || window.location.hostname) + ":" + (sys.port || window.location.port || 8080);
+        el.sysTemp.textContent = sys.cpu_temp !== null && sys.cpu_temp !== undefined ? sys.cpu_temp + " C" : "Tidak tersedia";
+        el.sysRam.textContent = (sys.ram_used_mb || 0) + " / " + (sys.ram_total_mb || 0) + " MB (" + (sys.ram_pct || 0) + "%)";
+        el.sysCpu.textContent = (sys.cpu_load_pct || 0) + "%";
+        el.sysAudio.textContent = p.alsa_device || "alsa/default";
+
+        // Bluetooth & Wi-Fi summaries
+        if (bt.connected) {
+          el.btStatusText.textContent = "Terhubung ke " + (bt.connected_name || bt.connected_mac) + " (Output: " + outMode + ")";
+        } else if (bt.is_scanning) {
+          el.btStatusText.textContent = "Sedang memindai perangkat Bluetooth...";
+        } else if (bt.is_connecting) {
+          el.btStatusText.textContent = "Menghubungkan ke perangkat Bluetooth...";
+        } else {
+          el.btStatusText.textContent = "Tidak ada speaker Bluetooth terhubung (Output aktif: " + (outMode === "bluetooth" ? "Bluetooth" : "Jack 3.5mm") + ")";
+        }
+
+        if (wifi.connected) {
+          el.wifiStatusText.textContent = "Terhubung ke " + (wifi.ssid || "Wi-Fi") + " (" + (wifi.ip || "-") + ", sinyal " + (wifi.signal || 0) + "%)";
+        } else {
+          el.wifiStatusText.textContent = "Status Wi-Fi: " + (wifi.ssid || wifi.state || "Tidak terhubung") + " (" + (wifi.ip || "-") + ")";
+        }
+      }
+
+      function renderQueue(queue) {
+        if (!queue.length) {
+          el.queueContainer.innerHTML =
+            '<div class="state-box">' +
+            '<span>Antrean masih kosong. Cari lagu untuk mulai memutar.</span>' +
+            '<button type="button" class="btn btn-sm btn-primary" data-jump-tab="search">Buka Pencarian</button>' +
+            '</div>';
+          return;
+        }
+
+        const ul = document.createElement("ul");
+        ul.className = "item-list";
+
+        queue.forEach(function (track) {
+          const li = document.createElement("li");
+          li.className = "track-row" + (track.is_current ? " current" : "");
+
+          const img = document.createElement("img");
+          img.className = "thumb";
+          img.width = 52;
+          img.height = 52;
+          img.loading = "lazy";
+          img.alt = "";
+          if (track.thumbnail_url) {
+            img.src = track.thumbnail_url;
+          }
+
+          const info = document.createElement("div");
+          info.className = "row-info";
+          const title = document.createElement("div");
+          title.className = "row-title";
+          title.textContent = track.title || "Tanpa Judul";
+          const sub = document.createElement("div");
+          sub.className = "row-sub tabular";
+          sub.textContent = (track.artist || "YouTube") + "  " + (track.duration_str || "--:--") + (track.is_current ? "  [Diputar]" : "");
+          info.appendChild(title);
+          info.appendChild(sub);
+
+          const actions = document.createElement("div");
+          actions.className = "row-actions";
+
+          const btnPlay = document.createElement("button");
+          btnPlay.type = "button";
+          btnPlay.className = "btn btn-sm" + (track.is_current ? " btn-primary" : "");
+          btnPlay.textContent = "Putar";
+          btnPlay.addEventListener("click", function () {
+            api("/api/queue/jump", { method: "POST", body: { index: track.index } })
+              .then(function (res) { if (res.state) renderState(res.state); })
+              .catch(function (err) { showToast("Gagal memutar: " + err.message); });
+          });
+
+          const btnDel = document.createElement("button");
+          btnDel.type = "button";
+          btnDel.className = "btn btn-sm btn-danger";
+          btnDel.setAttribute("aria-label", "Hapus " + (track.title || "lagu") + " dari antrean");
+          btnDel.textContent = "Hapus";
+          btnDel.addEventListener("click", function () {
+            api("/api/queue/remove", { method: "POST", body: { index: track.index } })
+              .then(function (res) { if (res.state) renderState(res.state); })
+              .catch(function (err) { showToast("Gagal menghapus: " + err.message); });
+          });
+
+          actions.appendChild(btnPlay);
+          actions.appendChild(btnDel);
+
+          li.appendChild(img);
+          li.appendChild(info);
+          li.appendChild(actions);
+          ul.appendChild(li);
+        });
+
+        el.queueContainer.innerHTML = "";
+        el.queueContainer.appendChild(ul);
+      }
+
+      async function doSearch(query) {
+        const q = (query || "").trim();
+        if (!q) {
+          el.searchResults.innerHTML = '<div class="state-box"><span>Ketik judul lagu atau tempel tautan YouTube terlebih dahulu.</span></div>';
+          return;
+        }
+        el.btnSearchSubmit.disabled = true;
+        el.searchResults.innerHTML = '<div class="state-box"><span>Mencari "' + escapeHtml(q) + '" di YouTube...</span></div>';
+        try {
+          const res = await api("/api/search?q=" + encodeURIComponent(q));
+          const tracks = res.tracks || [];
+          if (!tracks.length) {
+            el.searchResults.innerHTML = '<div class="state-box"><span>Tidak ada hasil untuk "' + escapeHtml(q) + '". Coba kata kunci lain.</span></div>';
+            return;
+          }
+          const ul = document.createElement("ul");
+          ul.className = "item-list";
+          tracks.forEach(function (track) {
+            const li = document.createElement("li");
+            li.className = "track-row";
+
+            const img = document.createElement("img");
+            img.className = "thumb";
+            img.width = 52;
+            img.height = 52;
+            img.loading = "lazy";
+            img.alt = "";
+            if (track.thumbnail_url) {
+              img.src = track.thumbnail_url;
+            }
+
+            const info = document.createElement("div");
+            info.className = "row-info";
+            const title = document.createElement("div");
+            title.className = "row-title";
+            title.textContent = track.title || "Tanpa Judul";
+            const sub = document.createElement("div");
+            sub.className = "row-sub tabular";
+            sub.textContent = (track.artist || "YouTube") + "  " + (track.duration_str || "--:--");
+            info.appendChild(title);
+            info.appendChild(sub);
+
+            const actions = document.createElement("div");
+            actions.className = "row-actions";
+
+            const btnPlay = document.createElement("button");
+            btnPlay.type = "button";
+            btnPlay.className = "btn btn-sm btn-primary";
+            btnPlay.textContent = "Putar";
+            btnPlay.addEventListener("click", function () {
+              api("/api/play", { method: "POST", body: { track: track } })
+                .then(function (r) {
+                  if (r.state) renderState(r.state);
+                  showToast("Memutar: " + track.title);
+                  if (!isDesktopLayout()) setTab("player");
+                })
+                .catch(function (err) { showToast("Gagal memutar: " + err.message); });
+            });
+
+            const btnQueue = document.createElement("button");
+            btnQueue.type = "button";
+            btnQueue.className = "btn btn-sm";
+            btnQueue.textContent = "+ Antrean";
+            btnQueue.addEventListener("click", function () {
+              api("/api/queue/add", { method: "POST", body: { track: track } })
+                .then(function () {
+                  showToast("Ditambahkan ke antrean: " + track.title);
+                  pollState();
+                })
+                .catch(function (err) { showToast("Gagal menambah antrean: " + err.message); });
+            });
+
+            actions.appendChild(btnPlay);
+            actions.appendChild(btnQueue);
+
+            li.appendChild(img);
+            li.appendChild(info);
+            li.appendChild(actions);
+            ul.appendChild(li);
+          });
+          el.searchResults.innerHTML = "";
+          el.searchResults.appendChild(ul);
+        } catch (err) {
+          el.searchResults.innerHTML =
+            '<div class="state-box error">' +
+            '<span>Pencarian gagal: ' + escapeHtml(err.message) + '</span>' +
+            '<button type="button" class="btn btn-sm" id="btn-retry-search">Coba Cari Lagi</button>' +
+            '</div>';
+          const retryBtn = document.getElementById("btn-retry-search");
+          if (retryBtn) {
+            retryBtn.addEventListener("click", function () { doSearch(q); });
+          }
+        } finally {
+          el.btnSearchSubmit.disabled = false;
+        }
+      }
+
+      async function loadBluetoothDevices() {
+        try {
+          const data = await api("/api/bluetooth/devices");
+          const devs = data.devices || [];
+          if (!devs.length) {
+            el.btList.innerHTML = '<div class="state-box"><span>Belum ada perangkat Bluetooth. Tekan Pindai Bluetooth untuk mencari speaker.</span></div>';
+            return;
+          }
+          const ul = document.createElement("ul");
+          ul.className = "item-list";
+          devs.forEach(function (dev) {
+            const li = document.createElement("li");
+            li.className = "track-row" + (dev.connected ? " current" : "");
+            const info = document.createElement("div");
+            info.className = "row-info";
+            const t = document.createElement("div");
+            t.className = "row-title";
+            t.textContent = dev.name || dev.mac;
+            const s = document.createElement("div");
+            s.className = "row-sub tabular";
+            s.textContent = dev.mac + (dev.connected ? "  [Terhubung]" : dev.paired ? "  [Dipasangkan]" : "");
+            info.appendChild(t);
+            info.appendChild(s);
+
+            const actions = document.createElement("div");
+            actions.className = "row-actions";
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "btn btn-sm" + (dev.connected ? " btn-danger" : " btn-primary");
+            btn.textContent = dev.connected ? "Putuskan" : "Hubungkan";
+            btn.addEventListener("click", function () {
+              const endpoint = dev.connected ? "/api/bluetooth/disconnect" : "/api/bluetooth/connect";
+              api(endpoint, { method: "POST", body: { mac: dev.mac } })
+                .then(function (r) {
+                  showToast(r.message || "Memproses Bluetooth...");
+                  setTimeout(loadBluetoothDevices, 2500);
+                })
+                .catch(function (err) { showToast("Bluetooth error: " + err.message); });
+            });
+            actions.appendChild(btn);
+
+            li.appendChild(info);
+            li.appendChild(actions);
+            ul.appendChild(li);
+          });
+          el.btList.innerHTML = "";
+          el.btList.appendChild(ul);
+        } catch (err) {
+          el.btList.innerHTML = '<div class="state-box error"><span>Gagal memuat perangkat Bluetooth: ' + escapeHtml(err.message) + '</span></div>';
+        }
+      }
+
+      async function loadWifiNetworks() {
+        try {
+          const data = await api("/api/wifi/networks");
+          const nets = data.networks || [];
+          if (!nets.length) {
+            el.wifiList.innerHTML = '<div class="state-box"><span>Tekan Pindai Wi-Fi untuk melihat jaringan di sekitar Raspberry Pi.</span></div>';
+            return;
+          }
+          const ul = document.createElement("ul");
+          ul.className = "item-list";
+          nets.forEach(function (net) {
+            const li = document.createElement("li");
+            li.className = "track-row" + (net.in_use ? " current" : "");
+            const info = document.createElement("div");
+            info.className = "row-info";
+            const t = document.createElement("div");
+            t.className = "row-title";
+            t.textContent = net.ssid;
+            const s = document.createElement("div");
+            s.className = "row-sub tabular";
+            s.textContent = "Sinyal " + net.signal + "%  " + (net.security || "Open") + (net.in_use ? "  [Aktif]" : "");
+            info.appendChild(t);
+            info.appendChild(s);
+
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "btn btn-sm";
+            btn.textContent = "Pilih";
+            btn.addEventListener("click", function () {
+              el.wifiSsid.value = net.ssid;
+              el.wifiPass.focus();
+              showToast("SSID dipilih: " + net.ssid);
+            });
+
+            li.appendChild(info);
+            li.appendChild(btn);
+            ul.appendChild(li);
+          });
+          el.wifiList.innerHTML = "";
+          el.wifiList.appendChild(ul);
+        } catch (err) {
+          el.wifiList.innerHTML = '<div class="state-box error"><span>Gagal memuat Wi-Fi: ' + escapeHtml(err.message) + '</span></div>';
+        }
+      }
+
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function openConfirm(title, desc, action) {
+        el.modalTitle.textContent = title;
+        el.modalDesc.textContent = desc;
+        state.pendingModalAction = action;
+        el.modal.classList.add("open");
+        el.modalCancel.focus();
+      }
+
+      function closeConfirm() {
+        el.modal.classList.remove("open");
+        state.pendingModalAction = null;
+      }
+
+      async function pollState() {
+        try {
+          const data = await api("/api/state");
+          renderState(data);
+        } catch (err) {
+          el.offlineBanner.classList.add("visible");
+          el.dotConn.classList.add("offline");
+          el.labelMode.textContent = "Terputus";
+        }
+      }
+
+      function schedulePoll() {
+        clearTimeout(state.pollTimer);
+        state.pollTimer = setTimeout(async function () {
+          await pollState();
+          schedulePoll();
+        }, document.hidden ? 4000 : 1200);
+      }
+
+      // Wire events
+      document.addEventListener("click", function (e) {
+        const navBtn = e.target.closest("[data-tab]");
+        if (navBtn) {
+          setTab(navBtn.dataset.tab);
+          return;
+        }
+        const jumpBtn = e.target.closest("[data-jump-tab]");
+        if (jumpBtn) {
+          setTab(jumpBtn.dataset.jumpTab);
+        }
+      });
+
+      el.btnQuickSearch.addEventListener("click", function () { setTab("search"); });
+      el.btnRetryConn.addEventListener("click", pollState);
+
+      el.btnToggle.addEventListener("click", function () {
+        api("/api/player/toggle", { method: "POST" }).then(function (r) {
+          if (r.state) renderState(r.state);
+        }).catch(function (err) { showToast(err.message); });
+      });
+
+      el.btnPrev.addEventListener("click", function () {
+        api("/api/player/prev", { method: "POST" }).then(function (r) {
+          if (r.state) renderState(r.state);
+        }).catch(function (err) { showToast(err.message); });
+      });
+
+      el.btnNext.addEventListener("click", function () {
+        api("/api/player/next", { method: "POST" }).then(function (r) {
+          if (r.state) renderState(r.state);
+        }).catch(function (err) { showToast(err.message); });
+      });
+
+      el.btnStop.addEventListener("click", function () {
+        api("/api/player/stop", { method: "POST" }).then(function (r) {
+          if (r.state) renderState(r.state);
+        }).catch(function (err) { showToast(err.message); });
+      });
+
+      el.btnRepeat.addEventListener("click", function () {
+        api("/api/player/repeat", { method: "POST" }).then(pollState).catch(function (err) { showToast(err.message); });
+      });
+
+      el.btnShuffle.addEventListener("click", function () {
+        api("/api/player/shuffle", { method: "POST" }).then(pollState).catch(function (err) { showToast(err.message); });
+      });
+
+      el.seekSlider.addEventListener("input", function () {
+        state.isSeeking = true;
+        el.timeElapsed.textContent = fmtTime(Number(el.seekSlider.value));
+      });
+      el.seekSlider.addEventListener("change", function () {
+        const pos = Number(el.seekSlider.value);
+        state.isSeeking = false;
+        api("/api/player/seek", { method: "POST", body: { position: pos } }).catch(function (err) { showToast(err.message); });
+      });
+
+      function sendVolume(val) {
+        const clamped = Math.max(0, Math.min(100, Math.round(val)));
+        el.volumeSlider.value = clamped;
+        el.volumeLabel.textContent = clamped + "%";
+        api("/api/player/volume", { method: "POST", body: { volume: clamped } }).catch(function (err) { showToast(err.message); });
+      }
+
+      el.volumeSlider.addEventListener("input", function () {
+        state.isAdjustingVol = true;
+        el.volumeLabel.textContent = el.volumeSlider.value + "%";
+      });
+      el.volumeSlider.addEventListener("change", function () {
+        state.isAdjustingVol = false;
+        sendVolume(Number(el.volumeSlider.value));
+      });
+      el.btnVolDown.addEventListener("click", function () {
+        sendVolume(Number(el.volumeSlider.value) - 5);
+      });
+      el.btnVolUp.addEventListener("click", function () {
+        sendVolume(Number(el.volumeSlider.value) + 5);
+      });
+
+      el.btnOutJack.addEventListener("click", function () {
+        api("/api/bluetooth/output", { method: "POST", body: { mode: "jack" } })
+          .then(function () { showToast("Output dialihkan ke Jack 3.5mm"); pollState(); })
+          .catch(function (err) { showToast(err.message); });
+      });
+
+      el.btnOutBt.addEventListener("click", function () {
+        api("/api/bluetooth/output", { method: "POST", body: { mode: "bluetooth" } })
+          .then(function () { showToast("Output dialihkan ke Bluetooth"); pollState(); })
+          .catch(function (err) { showToast(err.message); });
+      });
+
+      el.searchForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        doSearch(el.searchInput.value);
+      });
+
+      el.btnQueueClear.addEventListener("click", function () {
+        api("/api/queue/clear", { method: "POST" })
+          .then(function (r) {
+            if (r.state) renderState(r.state);
+            showToast("Antrean dikosongkan");
+          })
+          .catch(function (err) { showToast(err.message); });
+      });
+
+      el.btnBtScan.addEventListener("click", function () {
+        el.btnBtScan.disabled = true;
+        api("/api/bluetooth/scan", { method: "POST" })
+          .then(function () {
+            showToast("Memindai Bluetooth sekitar 7 detik...");
+            setTimeout(function () {
+              loadBluetoothDevices();
+              el.btnBtScan.disabled = false;
+            }, 3500);
+          })
+          .catch(function (err) {
+            showToast(err.message);
+            el.btnBtScan.disabled = false;
+          });
+      });
+
+      el.btnWifiScan.addEventListener("click", function () {
+        el.btnWifiScan.disabled = true;
+        api("/api/wifi/scan", { method: "POST" })
+          .then(function () {
+            showToast("Memindai jaringan Wi-Fi...");
+            setTimeout(function () {
+              loadWifiNetworks();
+              el.btnWifiScan.disabled = false;
+            }, 2200);
+          })
+          .catch(function (err) {
+            showToast(err.message);
+            el.btnWifiScan.disabled = false;
+          });
+      });
+
+      el.wifiForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        const ssid = el.wifiSsid.value.trim();
+        const password = el.wifiPass.value;
+        if (!ssid) {
+          showToast("Masukkan nama SSID Wi-Fi terlebih dahulu");
+          el.wifiSsid.focus();
+          return;
+        }
+        api("/api/wifi/connect", { method: "POST", body: { ssid: ssid, password: password } })
+          .then(function (r) {
+            showToast(r.message || "Menghubungkan ke " + ssid);
+            el.wifiPass.value = "";
+            setTimeout(pollState, 3000);
+          })
+          .catch(function (err) { showToast("Gagal hubung Wi-Fi: " + err.message); });
+      });
+
+      el.btnReboot.addEventListener("click", function () {
+        openConfirm("Mulai Ulang Raspberry Pi?", "Musik akan berhenti sementara sampai Pi selesai menyala ulang.", function () {
+          api("/api/system/reboot", { method: "POST" }).then(function () {
+            showToast("Raspberry Pi sedang dimulai ulang...");
+          }).catch(function (err) { showToast(err.message); });
+        });
+      });
+
+      el.btnShutdown.addEventListener("click", function () {
+        openConfirm("Matikan Raspberry Pi?", "Perangkat akan dimatikan. Anda perlu mencabut dan menyambungkan daya untuk menyalakan kembali.", function () {
+          api("/api/system/shutdown", { method: "POST" }).then(function () {
+            showToast("Raspberry Pi sedang dimatikan...");
+          }).catch(function (err) { showToast(err.message); });
+        });
+      });
+
+      el.modalCancel.addEventListener("click", closeConfirm);
+      el.modal.addEventListener("click", function (e) {
+        if (e.target === el.modal) closeConfirm();
+      });
+      el.modalConfirm.addEventListener("click", function () {
+        const fn = state.pendingModalAction;
+        closeConfirm();
+        if (fn) fn();
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && el.modal.classList.contains("open")) {
+          closeConfirm();
+        }
+      });
+
+      window.addEventListener("resize", applyPanels);
+      document.addEventListener("visibilitychange", function () {
+        if (!document.hidden) pollState();
+      });
+
+      applyPanels();
+      pollState().finally(schedulePoll);
+    })();
+  </script>
+</body>
+</html>

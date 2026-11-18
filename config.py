@@ -17,6 +17,10 @@ SCREEN_WIDTH = 480
 SCREEN_HEIGHT = 320
 SCREEN_SIZE = (SCREEN_WIDTH, SCREEN_HEIGHT)
 
+# Web Remote Control Configuration (Headless & Companion Access)
+WEB_HOST = "0.0.0.0"
+WEB_PORT = 8080
+
 # Frame rate configuration (Pi 3 CPU & SPI bus optimization)
 FPS_ACTIVE = 20     # Smooth response during touch interaction
 FPS_IDLE = 8        # Minimal redraws when idle to stop SPI bus flicker

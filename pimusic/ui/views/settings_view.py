@@ -143,6 +143,8 @@ class SettingsView(BaseView):
             audio_out_str = "3.5mm Analog Jack (ALSA)"
             audio_col = COLOR_ACCENT
 
+        web_url = self.app.web_server.get_access_url() if self.app.web_server else "Disabled"
+
         font_lbl = Theme.get_font(11)
         font_val = Theme.get_font(11, bold=True)
 
@@ -150,10 +152,11 @@ class SettingsView(BaseView):
             ("CPU Temperature:", temp_str, COLOR_WARNING if (temp and temp > 70) else COLOR_SUCCESS),
             ("RAM Usage (Pi 3):", f"{used_mb} MB / {total_mb} MB ({ram_pct}%)", COLOR_TEXT_PRIMARY),
             ("Active Audio Output:", audio_out_str, audio_col),
+            ("Web Remote URL:", web_url, COLOR_SUCCESS if self.app.web_server else COLOR_TEXT_MUTED),
         ]
 
         for i, (lbl, val, col) in enumerate(rows):
-            y = info_rect.top + 30 + (i * 20)
+            y = info_rect.top + 26 + (i * 17)
             lbl_surf = font_lbl.render(lbl, True, COLOR_TEXT_SECONDARY)
             val_surf = font_val.render(val, True, col)
             surface.blit(lbl_surf, (info_rect.left + 16, y))

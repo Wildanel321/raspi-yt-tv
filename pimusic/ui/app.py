@@ -8,6 +8,7 @@ import concurrent.futures
 import os
 import sys
 import threading
+import time
 from typing import Dict, Optional
 import pygame
 
@@ -16,7 +17,7 @@ from config import (
     STATUS_BAR_HEIGHT, NAV_BAR_HEIGHT, CONTENT_Y, CONTENT_HEIGHT,
     COLOR_BG, COLOR_SURFACE, COLOR_SURFACE_LIGHT, COLOR_SURFACE_BORDER,
     COLOR_ACCENT, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_TEXT_MUTED,
-    DEFAULT_VOLUME, init_directories
+    DEFAULT_VOLUME, WEB_HOST, WEB_PORT, init_directories
 )
 from pimusic.core.mpv_player import MPVPlayer
 from pimusic.core.playlist import PlaylistManager
@@ -26,6 +27,7 @@ from pimusic.core.bluetooth import BluetoothManager
 from pimusic.core.system_info import SystemInfo
 from pimusic.utils.cache import ThumbnailCache
 from pimusic.utils.logger import get_logger
+from pimusic.web.server import WebServer
 from pimusic.ui.theme import Theme
 from pimusic.ui.components.button import Button
 from pimusic.ui.components.status_bar import StatusBar
@@ -42,37 +44,28 @@ logger = get_logger("App")
 class App:
     """The central application coordinator."""
 
-    def __init__(self, fullscreen: bool = False):
+    def __init__(
+        self,
+        fullscreen: bool = False,
+        headless: bool = False,
+        enable_web: bool = True,
+        web_port: int = WEB_PORT,
+        alsa_device: str = "alsa/default",
+    ):
         init_directories()
 
-        # Prevent Pygame from touching ALSA (MPV handles all audio playback)
-        os.environ["SDL_AUDIODRIVER"] = "dummy"
-
-        # Initialize Pygame subsystems (Display and Font only)
-        pygame.display.init()
-        pygame.font.init()
-        try:
-            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
-        except Exception:
-            pass
-
-        # Display Setup (SCALED enables auto-adaptation to any HDMI resolution)
-        flags = pygame.DOUBLEBUF | pygame.SCALED
-        if fullscreen:
-            flags |= pygame.FULLSCREEN
-
-        self.screen = pygame.display.set_mode(SCREEN_SIZE, flags)
-        pygame.display.set_caption("Pi Music")
-        self.clock = pygame.time.Clock()
         self.is_running = True
+        self.headless = headless
+        self._pygame_initialized = False
+        self._shutdown_done = False
 
-        # Core Services
+        # Core Services (initialized identically for both HDMI GUI and Headless Web mode)
         self.cache = ThumbnailCache()
         self.playlist = PlaylistManager()
         self.youtube = YouTubeService()
         self.wifi = WifiManager()
         self.bluetooth = BluetoothManager()
-        self.player = MPVPlayer()
+        self.player = MPVPlayer(alsa_device=alsa_device)
 
         # Route audio according to saved preference (jack vs bluetooth)
         init_mode = self.bluetooth.audio_output_mode
@@ -85,26 +78,80 @@ class App:
         # Async Thumbnail Executor
         self._thumb_executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
 
-        # Components
-        self.status_bar = StatusBar()
+        # Lightweight Web Remote Server (always available when enabled, with or without HDMI)
+        self.web_server: Optional[WebServer] = None
+        if enable_web:
+            self.web_server = WebServer(self, host=WEB_HOST, port=web_port)
+            self.web_server.start()
 
-        # Bottom Navigation Bar (6 tabs across 480px width)
+        # Display & GUI components (skipped in headless mode or if no display is available)
+        self.screen = None
+        self.canvas = None
+        self.clock = None
+        self.real_w, self.real_h = SCREEN_SIZE
+        self.status_bar = None
         self.active_tab = "player"
         self.nav_buttons: Dict[str, Button] = {}
-        self._setup_navigation_bar()
+        self.views: Dict[str, BaseView] = {}
+        self.last_interaction_time = time.time()
 
-        # Views
-        self.views: Dict[str, BaseView] = {
-            "player": PlayerView(self),
-            "search": SearchView(self),
-            "queue": QueueView(self),
-            "wifi": WifiView(self),
-            "bluetooth": BluetoothView(self),
-            "settings": SettingsView(self)
-        }
+        if not self.headless:
+            self._init_gui(fullscreen=fullscreen)
+        else:
+            logger.info("Running in Headless Mode (no HDMI/GUI). Control via Web Remote.")
 
-        # Idle timer for CPU throttling
-        self.last_interaction_time = pygame.time.get_ticks() / 1000.0
+    def _init_gui(self, fullscreen: bool = False):
+        """Initialize Pygame display and views; fall back cleanly to headless if unavailable."""
+        try:
+            # Prevent Pygame from touching ALSA (MPV handles all audio playback)
+            os.environ["SDL_AUDIODRIVER"] = "dummy"
+
+            # Initialize Pygame subsystems (Display and Font only)
+            pygame.display.init()
+            pygame.font.init()
+            try:
+                pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+            except Exception:
+                pass
+
+            flags = pygame.DOUBLEBUF
+            if fullscreen:
+                flags |= pygame.FULLSCREEN
+
+            # If fullscreen, open at native HDMI resolution (0, 0)
+            mode_size = (0, 0) if fullscreen else SCREEN_SIZE
+            self.screen = pygame.display.set_mode(mode_size, flags)
+            self.real_w, self.real_h = self.screen.get_size()
+            pygame.display.set_caption("Pi Music")
+            logger.info(f"Display mode initialized: physical={self.real_w}x{self.real_h}, virtual=480x320")
+
+            # Virtual Canvas for responsive scaling across any HDMI TV / Monitor
+            self.canvas = pygame.Surface(SCREEN_SIZE)
+            self.clock = pygame.time.Clock()
+            self._pygame_initialized = True
+
+            # Components
+            self.status_bar = StatusBar()
+            self._setup_navigation_bar()
+
+            # Views
+            self.views = {
+                "player": PlayerView(self),
+                "search": SearchView(self),
+                "queue": QueueView(self),
+                "wifi": WifiView(self),
+                "bluetooth": BluetoothView(self),
+                "settings": SettingsView(self)
+            }
+            self.last_interaction_time = pygame.time.get_ticks() / 1000.0
+        except Exception as e:
+            logger.warning(f"Display unavailable ({e}). Falling back to Headless Web Mode.")
+            self.headless = True
+            self._pygame_initialized = False
+            try:
+                pygame.quit()
+            except Exception:
+                pass
 
     def _setup_navigation_bar(self):
         """Construct the 6 bottom navigation buttons."""
@@ -144,6 +191,25 @@ class App:
         """Immediately resolve and play the track."""
         self.playlist.play_now(track)
         self._resolve_and_stream(track)
+
+    def play_index(self, index: int) -> Optional[Track]:
+        """Jump to a specific queue index and start playing it."""
+        track = self.playlist.jump_to(index)
+        if track:
+            self._resolve_and_stream(track)
+        return track
+
+    def set_audio_output_mode(self, mode: str, bluetooth_mac: Optional[str] = None):
+        """Switch audio output between 'jack' and 'bluetooth' and update MPV."""
+        self.bluetooth.save_audio_output_pref(mode)
+        if mode == "bluetooth":
+            mac = bluetooth_mac
+            if not mac:
+                dev = self.bluetooth.get_connected_device()
+                mac = dev.mac if dev else None
+            self.player.set_audio_output("bluetooth", mac)
+        else:
+            self.player.set_audio_output("jack", None)
 
     def play_next(self):
         """Advance to next track in queue."""
@@ -208,6 +274,12 @@ class App:
         """Main application execution loop."""
         logger.info("Pi Music started successfully.")
 
+        if self.headless:
+            while self.is_running:
+                time.sleep(0.5)
+            self.shutdown()
+            return
+
         while self.is_running:
             # 1. Process Input Events
             for event in pygame.event.get():
@@ -215,6 +287,16 @@ class App:
                     # Do not terminate when HDMI cable is disconnected; continue audio playback
                     logger.info("Window/Display disconnect event received. Playback continues uninterrupted.")
                     continue
+
+                # Scale mouse/touch coordinates if running on a scaled HDMI screen
+                if self.real_w != SCREEN_WIDTH or self.real_h != SCREEN_HEIGHT:
+                    if hasattr(event, "pos"):
+                        orig_x, orig_y = event.pos
+                        scaled_pos = (
+                            int(orig_x * SCREEN_WIDTH / self.real_w),
+                            int(orig_y * SCREEN_HEIGHT / self.real_h)
+                        )
+                        event.__dict__["pos"] = scaled_pos
 
                 self.last_interaction_time = pygame.time.get_ticks() / 1000.0
 
@@ -245,25 +327,32 @@ class App:
             # Update active view
             self.views[self.active_tab].update()
 
-            # 3. Render Frame
-            self.screen.fill(COLOR_BG)
+            # 3. Render Frame to Virtual Canvas
+            self.canvas.fill(COLOR_BG)
 
             # Render active view content
-            self.views[self.active_tab].draw(self.screen)
+            self.views[self.active_tab].draw(self.canvas)
 
             # Render top Status Bar
-            self.status_bar.draw(self.screen)
+            self.status_bar.draw(self.canvas)
 
             # Render bottom Navigation Bar
             nav_y = SCREEN_HEIGHT - NAV_BAR_HEIGHT
-            pygame.draw.line(self.screen, COLOR_SURFACE_BORDER, (0, nav_y), (SCREEN_WIDTH, nav_y), 1)
+            pygame.draw.line(self.canvas, COLOR_SURFACE_BORDER, (0, nav_y), (SCREEN_WIDTH, nav_y), 1)
             for tab_id, btn in self.nav_buttons.items():
                 btn.is_active = (tab_id == self.active_tab)
-                btn.draw(self.screen)
+                btn.draw(self.canvas)
+
+            # Blit virtual canvas to physical HDMI screen with scaling
+            if self.real_w == SCREEN_WIDTH and self.real_h == SCREEN_HEIGHT:
+                self.screen.blit(self.canvas, (0, 0))
+            else:
+                scaled_surface = pygame.transform.scale(self.canvas, (self.real_w, self.real_h))
+                self.screen.blit(scaled_surface, (0, 0))
 
             try:
                 pygame.display.flip()
-            except Exception as e:
+            except Exception:
                 # Catch display surface loss during HDMI hotplug
                 time.sleep(0.1)
 
@@ -277,9 +366,15 @@ class App:
 
     def shutdown(self):
         """Clean up all services and shutdown."""
+        if self._shutdown_done:
+            return
+        self._shutdown_done = True
         logger.info("Shutting down Pi Music...")
+        if self.web_server:
+            self.web_server.stop()
         self.playlist.save_queue()
         self.player.shutdown()
         self.youtube.shutdown()
         self._thumb_executor.shutdown(wait=False)
-        pygame.quit()
+        if self._pygame_initialized:
+            pygame.quit()

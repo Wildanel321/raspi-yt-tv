@@ -25,10 +25,16 @@ class TestPiMusicCore(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.orig_queue_file = config.QUEUE_FILE
-        config.QUEUE_FILE = Path(self.temp_dir.name) / "test_queue.json"
+        import pimusic.core.playlist as playlist_mod
+        self.orig_pm_queue_file = playlist_mod.QUEUE_FILE
+        tmp_queue = Path(self.temp_dir.name) / "test_queue.json"
+        config.QUEUE_FILE = tmp_queue
+        playlist_mod.QUEUE_FILE = tmp_queue
 
     def tearDown(self):
+        import pimusic.core.playlist as playlist_mod
         config.QUEUE_FILE = self.orig_queue_file
+        playlist_mod.QUEUE_FILE = self.orig_pm_queue_file
         self.temp_dir.cleanup()
 
     def test_dimensions(self):
@@ -153,6 +159,85 @@ class TestPiMusicCore(unittest.TestCase):
         bm.disconnect_device_async("FC:58:FA:12:34:56", lambda success, msg: results.append(("disconnect", success)))
         time.sleep(0.5)
         self.assertTrue(any(r[0] == "disconnect" for r in results))
+
+    def test_headless_web_remote(self):
+        import json
+        import urllib.request
+        import urllib.error
+        from pimusic.ui.app import App
+
+        app = App(headless=True, enable_web=True, web_port=0)
+        try:
+            self.assertTrue(app.headless)
+            self.assertIsNotNone(app.web_server)
+            port = app.web_server.port
+            self.assertGreater(port, 0)
+            base = f"http://127.0.0.1:{port}"
+
+            # 1. Serve index HTML
+            with urllib.request.urlopen(f"{base}/", timeout=3) as resp:
+                self.assertEqual(resp.status, 200)
+                html = resp.read().decode("utf-8")
+                self.assertIn("Pi Music Remote", html)
+
+            # 2. Fetch state JSON
+            with urllib.request.urlopen(f"{base}/api/state", timeout=3) as resp:
+                self.assertEqual(resp.status, 200)
+                state = json.loads(resp.read().decode("utf-8"))
+                self.assertTrue(state["app"]["headless"])
+                self.assertIn("player", state)
+                self.assertIn("playlist", state)
+                self.assertIn("system", state)
+
+            # 3. Add track to queue via POST
+            sample_track = {
+                "video_id": "abc123xyz",
+                "title": "Test Track",
+                "artist": "Test Artist",
+                "duration": 215,
+                "thumbnail_url": "",
+                "webpage_url": "https://www.youtube.com/watch?v=abc123xyz"
+            }
+            req = urllib.request.Request(
+                f"{base}/api/queue/add",
+                data=json.dumps({"track": sample_track}).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                res = json.loads(resp.read().decode("utf-8"))
+                self.assertTrue(res["ok"])
+                self.assertEqual(res["queue_length"], 1)
+
+            # 4. Volume, repeat, shuffle, audio output endpoints
+            for endpoint, payload in [
+                ("/api/player/volume", {"volume": 55}),
+                ("/api/player/repeat", {"mode": "all"}),
+                ("/api/player/shuffle", {"enabled": True}),
+                ("/api/bluetooth/output", {"mode": "jack"}),
+                ("/api/queue/clear", {}),
+            ]:
+                req = urllib.request.Request(
+                    f"{base}{endpoint}",
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=3) as resp:
+                    res = json.loads(resp.read().decode("utf-8"))
+                    self.assertTrue(res["ok"])
+
+            self.assertEqual(app.player.volume, 55)
+            self.assertEqual(app.playlist.repeat_mode, "all")
+            self.assertTrue(app.playlist.shuffle)
+            self.assertEqual(len(app.playlist.queue), 0)
+
+            # 5. Unknown endpoint returns 404
+            with self.assertRaises(urllib.error.HTTPError) as ctx:
+                urllib.request.urlopen(f"{base}/api/does-not-exist", timeout=3)
+            self.assertEqual(ctx.exception.code, 404)
+        finally:
+            app.shutdown()
 
 if __name__ == "__main__":
     unittest.main()
