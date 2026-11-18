@@ -32,7 +32,11 @@ Standard web browsers like Chromium easily consume 500MB to 800MB of RAM, causin
 
 ## ✨ Features
 
-- **HDMI Auto-Scaling**: Tampilan otomatis menyesuaikan resolusi monitor/TV HDMI (720p, 1080p, dll.) secara tajam dan proporsional via `pygame.SCALED`.
+- **Web Remote Control (Mode Tanpa HDMI / Headless)**:
+  - Akses penuh lewat browser HP atau laptop di `http://<IP-Raspberry-Pi>:8080` atau `http://tv.local:8080` tanpa perlu membawa monitor HDMI.
+  - Berjalan otomatis dalam mode **Headless** saat tidak ada monitor HDMI terpasang (hemat RAM & CPU karena tidak menjalankan Xorg), dan tetap aktif berdampingan saat HDMI terpasang.
+  - Mendukung kontrol Play/Pause/Next/Prev/Seek/Volume, pencarian YouTube (atau tempel tautan YouTube langsung), manajemen antrean, pairing Bluetooth audio, manajemen Wi-Fi, dan pemantauan suhu/RAM Pi.
+- **HDMI Auto-Scaling**: Tampilan otomatis menyesuaikan resolusi monitor/TV HDMI (720p, 1080p, dll.) secara tajam dan proporsional.
 - **UI Modern Dark Mode**: Desain modern menyerupai *car head unit* / smart TV dengan navigasi intuitif.
 - **On-Screen Virtual Keyboard & USB Keyboard Support**: Mendukung keyboard virtual di layar maupun keyboard fisik.
 - **Fast YouTube Search**: Search songs, artists, or albums in milliseconds using non-blocking background threads.
