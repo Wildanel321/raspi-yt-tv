@@ -232,6 +232,22 @@ class TestPiMusicCore(unittest.TestCase):
             self.assertTrue(app.playlist.shuffle)
             self.assertEqual(len(app.playlist.queue), 0)
 
+            # 4b. Wi-Fi Selector endpoints (saved profiles + save + connect-saved + forget)
+            req = urllib.request.Request(
+                f"{base}/api/wifi/save",
+                data=json.dumps({"ssid": "Cafe-Test", "password": "secret123"}).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                self.assertTrue(json.loads(resp.read().decode("utf-8"))["ok"])
+            import time as _t
+            _t.sleep(0.5)
+            with urllib.request.urlopen(f"{base}/api/wifi/networks", timeout=3) as resp:
+                wifi_data = json.loads(resp.read().decode("utf-8"))
+                self.assertIn("saved", wifi_data)
+                self.assertTrue(any(s["ssid"] == "Cafe-Test" for s in wifi_data["saved"]))
+
             # 5. Unknown endpoint returns 404
             with self.assertRaises(urllib.error.HTTPError) as ctx:
                 urllib.request.urlopen(f"{base}/api/does-not-exist", timeout=3)

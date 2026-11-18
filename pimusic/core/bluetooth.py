@@ -106,6 +106,8 @@ class BluetoothManager:
     def _initial_setup(self):
         """Power on bluetooth adapter and query paired devices."""
         try:
+            if shutil.which("rfkill"):
+                subprocess.run(["rfkill", "unblock", "bluetooth"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=3)
             subprocess.run(["bluetoothctl", "power", "on"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=3)
             subprocess.run(["bluetoothctl", "agent", "on"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)
             subprocess.run(["bluetoothctl", "default-agent"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2)

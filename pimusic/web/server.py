@@ -146,10 +146,20 @@ class _PiMusicRequestHandler(BaseHTTPRequestHandler):
 
         if path == "/api/wifi/networks":
             ws = self.server.web_server
+            saved = self.server.app.wifi.get_saved_networks()
+            saved_ssids = {s["ssid"] for s in saved}
+            enriched = []
+            for n in ws.wifi_networks:
+                item = dict(n)
+                item["is_saved"] = n.get("ssid", "") in saved_ssids
+                enriched.append(item)
             self._send_json({
-                "networks": ws.wifi_networks,
+                "networks": enriched,
+                "saved": saved,
                 "is_scanning": self.server.app.wifi._is_scanning,
+                "is_connecting": self.server.app.wifi._is_connecting,
                 "status": self.server.app.wifi.get_status(),
+                "message": ws.last_wifi_message,
             })
             return
 
@@ -303,8 +313,11 @@ class _PiMusicRequestHandler(BaseHTTPRequestHandler):
 
             if path == "/api/bluetooth/output":
                 mode = str(body.get("mode", "jack")).strip().lower()
-                if mode not in ("jack", "bluetooth"):
-                    self._send_json({"error": "Mode must be 'jack' or 'bluetooth'"}, status=400)
+                if mode not in ("jack", "hdmi", "bluetooth"):
+                    self._send_json({"error": "Mode must be 'jack', 'hdmi', or 'bluetooth'"}, status=400)
+                    return
+                if mode == "bluetooth" and not app.bluetooth.is_connected():
+                    self._send_json({"error": "Hubungkan speaker Bluetooth terlebih dahulu di tab Perangkat."}, status=400)
                     return
                 app.set_audio_output_mode(mode)
                 self._send_json({"ok": True, "audio_output": app.bluetooth.audio_output_mode})
@@ -337,8 +350,66 @@ class _PiMusicRequestHandler(BaseHTTPRequestHandler):
                 def _on_wifi_connect(success: bool, msg: str):
                     ws.last_wifi_message = msg
 
+                ws.last_wifi_message = f"Menghubungkan ke {ssid}..."
                 app.wifi.connect_async(ssid, password, _on_wifi_connect)
-                self._send_json({"ok": True, "message": f"Connecting to {ssid}..."})
+                self._send_json({"ok": True, "message": f"Menghubungkan ke {ssid}..."})
+                return
+
+            if path == "/api/wifi/connect-saved":
+                name = str(body.get("name", "")).strip()
+                if not name:
+                    self._send_json({"error": "Missing profile name"}, status=400)
+                    return
+
+                def _on_saved_connect(success: bool, msg: str):
+                    ws.last_wifi_message = msg
+
+                ws.last_wifi_message = f"Berpindah ke {name}..."
+                app.wifi.connect_saved_async(name, _on_saved_connect)
+                self._send_json({"ok": True, "message": f"Berpindah ke {name}..."})
+                return
+
+            if path == "/api/wifi/save":
+                ssid = str(body.get("ssid", "")).strip()
+                password = str(body.get("password", ""))
+                if not ssid:
+                    self._send_json({"error": "SSID tidak boleh kosong"}, status=400)
+                    return
+
+                def _on_wifi_save(success: bool, msg: str):
+                    ws.last_wifi_message = msg
+
+                app.wifi.save_network_async(ssid, password, _on_wifi_save)
+                self._send_json({"ok": True, "message": f"Menyimpan jaringan {ssid}..."})
+                return
+
+            if path == "/api/wifi/forget":
+                name = str(body.get("name", "")).strip()
+                if not name:
+                    self._send_json({"error": "Missing profile name"}, status=400)
+                    return
+
+                def _on_wifi_forget(success: bool, msg: str):
+                    ws.last_wifi_message = msg
+
+                app.wifi.forget_network_async(name, _on_wifi_forget)
+                self._send_json({"ok": True, "message": f"Menghapus profil {name}..."})
+                return
+
+            if path == "/api/wifi/disconnect":
+                def _on_wifi_disc(success: bool, msg: str):
+                    ws.last_wifi_message = msg
+
+                app.wifi.disconnect_async(_on_wifi_disc)
+                self._send_json({"ok": True, "message": "Memutus koneksi Wi-Fi..."})
+                return
+
+            if path == "/api/wifi/reconnect":
+                def _on_wifi_reconn(success: bool, msg: str):
+                    ws.last_wifi_message = msg
+
+                app.wifi.reconnect_async(_on_wifi_reconn)
+                self._send_json({"ok": True, "message": "Menyambungkan ulang Wi-Fi..."})
                 return
 
             if path == "/api/system/reboot":

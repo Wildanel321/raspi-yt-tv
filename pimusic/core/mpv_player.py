@@ -223,20 +223,36 @@ class MPVPlayer:
 
     def set_audio_output(self, mode: str, bluetooth_mac: Optional[str] = None):
         """
-        Switches audio output device between 'jack' (3.5mm analog) and 'bluetooth'.
-        Updates the running MPV daemon via IPC or restarts with the new device.
+        Switches audio output device between 'jack' (3.5mm analog), 'hdmi' (vc4-hdmi),
+        and 'bluetooth' (bluealsa A2DP). Updates the running MPV daemon via IPC.
         """
         if mode == "bluetooth":
             if bluetooth_mac:
                 self.alsa_device = f"alsa/bluealsa:DEV={bluetooth_mac.upper()},PROFILE=a2dp"
             else:
                 self.alsa_device = "alsa/bluealsa"
+        elif mode == "hdmi":
+            self.alsa_device = self._detect_alsa_device("vc4hdmi", fallback="alsa/default")
         else:
-            self.alsa_device = "alsa/default"
+            self.alsa_device = self._detect_alsa_device("Headphones", fallback="alsa/default")
 
         logger.info(f"Setting MPV audio device to {self.alsa_device}")
         if self._connected:
             self._send_command(["set_property", "audio-device", self.alsa_device])
+
+    @staticmethod
+    def _detect_alsa_device(card_name: str, fallback: str = "alsa/default") -> str:
+        """Resolve an ALSA plughw device by card name if present in /proc/asound/cards."""
+        if IS_WINDOWS:
+            return fallback
+        try:
+            with open("/proc/asound/cards", "r", encoding="utf-8") as f:
+                cards_text = f.read()
+            if card_name in cards_text:
+                return f"alsa/plughw:CARD={card_name},DEV=0"
+        except Exception:
+            pass
+        return fallback
 
     def pause(self):
         """Pause playback."""

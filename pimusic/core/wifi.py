@@ -61,6 +61,10 @@ class WifiManager:
             "portal_url": "",
             "interface": self.active_interface
         }
+        self._sim_saved_networks: List[Dict[str, any]] = [
+            {"name": "Home-WiFi", "ssid": "Home-WiFi", "autoconnect": True, "active": True},
+            {"name": "Hotspot-HP", "ssid": "Hotspot-HP", "autoconnect": True, "active": False},
+        ]
 
     def _detect_wifi_interface(self) -> str:
         """Finds primary wireless interface name (e.g. wlan0)."""
@@ -273,17 +277,36 @@ class WifiManager:
                     callback(True, f"Connected to {ssid}")
                     return
 
-                cmd = ["nmcli", "dev", "wifi", "connect", ssid]
-                if password:
-                    cmd.extend(["password", password])
+                if not password:
+                    # If a saved profile already exists for this SSID, bring it up directly
+                    saved_match = next(
+                        (s for s in self.get_saved_networks() if s["ssid"] == ssid or s["name"] == ssid),
+                        None
+                    )
+                    if saved_match:
+                        res = subprocess.run(
+                            ["nmcli", "connection", "up", saved_match["name"]],
+                            capture_output=True,
+                            text=True,
+                            timeout=30
+                        )
+                    else:
+                        res = subprocess.run(
+                            ["nmcli", "dev", "wifi", "connect", ssid],
+                            capture_output=True,
+                            text=True,
+                            timeout=30
+                        )
+                else:
+                    cmd = ["nmcli", "dev", "wifi", "connect", ssid, "password", password]
+                    res = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
 
-                res = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
                 if res.returncode == 0:
                     logger.info(f"Successfully connected to {ssid}")
-                    self.get_status()
+                    self.get_status(force=True)
                     # Trigger captive portal check right after connecting
                     self.check_captive_portal_async(lambda detected, url: None)
-                    callback(True, f"Connected to {ssid}")
+                    callback(True, f"Terhubung ke {ssid}")
                 else:
                     err_msg = res.stderr.strip() or res.stdout.strip() or "Failed to connect"
                     logger.warning(f"Connection failed: {err_msg}")
@@ -297,6 +320,176 @@ class WifiManager:
 
         thread = threading.Thread(target=_worker, daemon=True)
         thread.start()
+
+    def get_saved_networks(self) -> List[Dict[str, any]]:
+        """Return saved Wi-Fi connection profiles from NetworkManager."""
+        if not self.has_nmcli:
+            return [dict(n) for n in self._sim_saved_networks]
+
+        saved: List[Dict[str, any]] = []
+        try:
+            res = subprocess.run(
+                ["nmcli", "-t", "-f", "NAME,TYPE,AUTOCONNECT,ACTIVE", "connection", "show"],
+                capture_output=True,
+                text=True,
+                timeout=4
+            )
+            for line in res.stdout.strip().splitlines():
+                if not line:
+                    continue
+                parts = line.split(":")
+                if len(parts) < 4:
+                    continue
+                name, ctype, autoconn, active = parts[0], parts[1], parts[2], parts[3]
+                if ctype != "802-11-wireless":
+                    continue
+                ssid = name
+                try:
+                    ssid_res = subprocess.run(
+                        ["nmcli", "-g", "802-11-wireless.ssid", "connection", "show", name],
+                        capture_output=True,
+                        text=True,
+                        timeout=2
+                    )
+                    if ssid_res.returncode == 0 and ssid_res.stdout.strip():
+                        ssid = ssid_res.stdout.strip()
+                except Exception:
+                    pass
+                saved.append({
+                    "name": name,
+                    "ssid": ssid,
+                    "autoconnect": autoconn.lower() == "yes",
+                    "active": active.lower() == "yes",
+                })
+            saved.sort(key=lambda x: (x["active"], x["ssid"].lower()), reverse=True)
+        except Exception as e:
+            logger.error(f"Error listing saved Wi-Fi networks: {e}")
+        return saved
+
+    def connect_saved_async(self, profile_name: str, callback: Callable[[bool, str], None]) -> None:
+        """Switch to an already saved NetworkManager Wi-Fi profile."""
+        if self._is_connecting:
+            callback(False, "Sedang menghubungkan ke jaringan lain")
+            return
+
+        def _worker():
+            self._is_connecting = True
+            self.last_status["state"] = "connecting"
+            logger.info(f"Activating saved Wi-Fi profile: {profile_name}...")
+            try:
+                if not self.has_nmcli:
+                    time.sleep(0.5)
+                    for item in self._sim_saved_networks:
+                        item["active"] = (item["name"] == profile_name or item["ssid"] == profile_name)
+                    self.last_status["connected"] = True
+                    self.last_status["state"] = "connected"
+                    self.last_status["ssid"] = profile_name
+                    callback(True, f"Terhubung ke {profile_name}")
+                    return
+
+                res = subprocess.run(
+                    ["nmcli", "connection", "up", profile_name],
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                if res.returncode == 0:
+                    self.get_status(force=True)
+                    callback(True, f"Terhubung ke {profile_name}")
+                else:
+                    err = res.stderr.strip() or res.stdout.strip() or "Gagal menghubungkan profil Wi-Fi"
+                    callback(False, err)
+            except subprocess.TimeoutExpired:
+                callback(False, "Koneksi timeout")
+            except Exception as e:
+                callback(False, str(e))
+            finally:
+                self._is_connecting = False
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def save_network_async(self, ssid: str, password: str, callback: Callable[[bool, str], None]) -> None:
+        """Pre-save a Wi-Fi profile with autoconnect=yes even when out of range."""
+        ssid = ssid.strip()
+        if not ssid:
+            callback(False, "SSID tidak boleh kosong")
+            return
+
+        def _worker():
+            logger.info(f"Pre-saving Wi-Fi profile for SSID: {ssid}...")
+            try:
+                if not self.has_nmcli:
+                    time.sleep(0.3)
+                    exists = any(s["ssid"] == ssid for s in self._sim_saved_networks)
+                    if not exists:
+                        self._sim_saved_networks.append({
+                            "name": ssid,
+                            "ssid": ssid,
+                            "autoconnect": True,
+                            "active": False
+                        })
+                    callback(True, f"Wi-Fi '{ssid}' berhasil disimpan (auto-connect aktif)")
+                    return
+
+                # Remove existing duplicate profile with same con-name if present
+                existing = [s for s in self.get_saved_networks() if s["name"] == ssid or s["ssid"] == ssid]
+                for prof in existing:
+                    if not prof["active"]:
+                        subprocess.run(["nmcli", "connection", "delete", prof["name"]],
+                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+
+                cmd = [
+                    "nmcli", "connection", "add",
+                    "type", "wifi",
+                    "ifname", self.active_interface,
+                    "con-name", ssid,
+                    "ssid", ssid,
+                    "connection.autoconnect", "yes"
+                ]
+                if password:
+                    cmd.extend(["wifi-sec.key-mgmt", "wpa-psk", "wifi-sec.psk", password])
+
+                res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                if res.returncode == 0:
+                    callback(True, f"Wi-Fi '{ssid}' disimpan! Pi akan otomatis terhubung saat berada di lokasi.")
+                else:
+                    err = res.stderr.strip() or res.stdout.strip() or "Gagal menyimpan Wi-Fi"
+                    callback(False, err)
+            except Exception as e:
+                callback(False, str(e))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def forget_network_async(self, profile_name: str, callback: Callable[[bool, str], None]) -> None:
+        """Delete a saved Wi-Fi profile from NetworkManager."""
+        def _worker():
+            logger.info(f"Forgetting Wi-Fi profile: {profile_name}...")
+            try:
+                if not self.has_nmcli:
+                    time.sleep(0.3)
+                    self._sim_saved_networks = [
+                        s for s in self._sim_saved_networks
+                        if s["name"] != profile_name and s["ssid"] != profile_name
+                    ]
+                    callback(True, f"Profil '{profile_name}' dihapus")
+                    return
+
+                res = subprocess.run(
+                    ["nmcli", "connection", "delete", profile_name],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                if res.returncode == 0:
+                    self.get_status(force=True)
+                    callback(True, f"Profil '{profile_name}' dihapus")
+                else:
+                    err = res.stderr.strip() or res.stdout.strip() or "Gagal menghapus profil Wi-Fi"
+                    callback(False, err)
+            except Exception as e:
+                callback(False, str(e))
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     def disconnect_async(self, callback: Callable[[bool, str], None]) -> None:
         """Disconnect active Wi-Fi connection without affecting playback or other apps."""

@@ -136,9 +136,13 @@ class SettingsView(BaseView):
         used_mb, total_mb, ram_pct = SystemInfo.get_ram_usage()
 
         bt_dev = self.app.bluetooth.get_connected_device()
-        if self.app.bluetooth.audio_output_mode == "bluetooth":
+        out_mode = self.app.bluetooth.audio_output_mode
+        if out_mode == "bluetooth":
             audio_out_str = f"Bluetooth ({bt_dev.name if bt_dev else 'Connecting...'})"
             audio_col = COLOR_SUCCESS if bt_dev else COLOR_WARNING
+        elif out_mode == "hdmi":
+            audio_out_str = "HDMI Audio (vc4-hdmi)"
+            audio_col = COLOR_SUCCESS
         else:
             audio_out_str = "3.5mm Analog Jack (ALSA)"
             audio_col = COLOR_ACCENT

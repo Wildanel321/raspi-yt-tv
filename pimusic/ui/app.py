@@ -114,11 +114,11 @@ class App:
             except Exception:
                 pass
 
+            # Claim full physical resolution (0, 0) in minimal Xorg without a window manager
+            # so the window fills 100% of the HDMI display instead of floating as a 480x320 box.
             flags = pygame.DOUBLEBUF
             if fullscreen:
                 flags |= pygame.FULLSCREEN
-
-            # If fullscreen, open at native HDMI resolution (0, 0)
             mode_size = (0, 0) if fullscreen else SCREEN_SIZE
             self.screen = pygame.display.set_mode(mode_size, flags)
             self.real_w, self.real_h = self.screen.get_size()
@@ -200,7 +200,9 @@ class App:
         return track
 
     def set_audio_output_mode(self, mode: str, bluetooth_mac: Optional[str] = None):
-        """Switch audio output between 'jack' and 'bluetooth' and update MPV."""
+        """Switch audio output between 'jack', 'hdmi', and 'bluetooth' and update MPV."""
+        if mode not in ("jack", "hdmi", "bluetooth"):
+            mode = "jack"
         self.bluetooth.save_audio_output_pref(mode)
         if mode == "bluetooth":
             mac = bluetooth_mac
@@ -208,6 +210,8 @@ class App:
                 dev = self.bluetooth.get_connected_device()
                 mac = dev.mac if dev else None
             self.player.set_audio_output("bluetooth", mac)
+        elif mode == "hdmi":
+            self.player.set_audio_output("hdmi", None)
         else:
             self.player.set_audio_output("jack", None)
 
@@ -241,9 +245,8 @@ class App:
         self.player.stop()
 
     def set_volume(self, val: int):
-        """Adjust volume on MPV and ALSA."""
+        """Adjust playback volume via MPV (keeps ALSA PCM at clean 0dB line-level)."""
         self.player.set_volume(val)
-        SystemInfo.set_alsa_volume(val)
 
     def _resolve_and_stream(self, track: Track):
         """Asynchronously resolve direct audio stream and send to MPV."""

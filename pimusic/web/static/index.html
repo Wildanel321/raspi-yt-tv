@@ -470,7 +470,7 @@
 
     .output-switch {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(3, 1fr);
       gap: 8px;
     }
 
@@ -611,9 +611,30 @@
       display: flex;
       flex-direction: column;
       gap: 10px;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid var(--border);
+      margin-top: 4px;
+    }
+
+    .pass-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .wifi-note {
+      margin: 10px 0 0;
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      background-color: var(--surface-raised);
+      border: 1px solid var(--border);
+      font-size: 0.84rem;
+      color: var(--text-secondary);
+    }
+
+    .wifi-msg {
+      margin: 8px 0 0;
+      font-size: 0.86rem;
+      color: var(--ok);
+      min-height: 1.2em;
     }
 
     .form-label {
@@ -633,10 +654,10 @@
       z-index: 30;
       background-color: var(--surface);
       border-top: 1px solid var(--border);
-      padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+      padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 4px;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 2px;
     }
 
     .nav-btn {
@@ -924,6 +945,7 @@
           <div class="kv-label" style="margin-bottom:6px">Output Audio</div>
           <div class="output-switch">
             <button type="button" class="btn btn-sm btn-toggle" id="btn-out-jack">Jack 3.5mm</button>
+            <button type="button" class="btn btn-sm btn-toggle" id="btn-out-hdmi">HDMI</button>
             <button type="button" class="btn btn-sm btn-toggle" id="btn-out-bt">Bluetooth</button>
           </div>
         </div>
@@ -935,6 +957,7 @@
       <div class="desktop-tabs" role="tablist" aria-label="Navigasi desktop">
         <button type="button" class="desktop-tab-btn active" data-tab="search" role="tab" aria-selected="true">Cari YouTube</button>
         <button type="button" class="desktop-tab-btn" data-tab="queue" role="tab" aria-selected="false">Antrean (<span id="desktop-queue-count">0</span>)</button>
+        <button type="button" class="desktop-tab-btn" data-tab="wifi" role="tab" aria-selected="false">Wi-Fi</button>
         <button type="button" class="desktop-tab-btn" data-tab="device" role="tab" aria-selected="false">Perangkat &amp; Sistem</button>
       </div>
 
@@ -973,7 +996,67 @@
         </div>
       </section>
 
-      <!-- Device Panel (Bluetooth, Wi-Fi, System) -->
+      <!-- Wi-Fi Selector Panel -->
+      <section id="panel-wifi" class="panel" aria-label="Pengatur Jaringan Wi-Fi">
+        <div class="card">
+          <div class="section-header">
+            <h2 class="section-title">Status Wi-Fi Aktif</h2>
+            <div style="display:flex; gap:8px; flex-wrap:wrap">
+              <button type="button" class="btn btn-sm btn-primary" id="btn-wifi-scan">Pindai Sekitar</button>
+              <button type="button" class="btn btn-sm" id="btn-wifi-reconnect">Sambung Ulang</button>
+            </div>
+          </div>
+          <p class="muted" id="wifi-status-text" style="margin:0">Memuat status Wi-Fi...</p>
+          <p class="wifi-msg" id="wifi-action-msg"></p>
+          <div class="wifi-note">
+            Tips pindah tempat: simpan dulu Wi-Fi tujuan atau Hotspot HP kamu di bawah agar Pi otomatis tersambung saat tiba. Setelah pindah Wi-Fi, sambungkan HP ke Wi-Fi yang sama lalu buka <strong>http://tv.local:8080</strong>.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-header">
+            <h2 class="section-title">Wi-Fi Sekitar</h2>
+          </div>
+          <div id="wifi-list">
+            <div class="state-box"><span>Tekan Pindai Sekitar untuk melihat daftar Wi-Fi di dekat Raspberry Pi.</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-header">
+            <h2 class="section-title">Hubungkan atau Simpan Wi-Fi Baru</h2>
+          </div>
+          <form id="wifi-connect-form" class="wifi-form">
+            <label class="form-label" for="wifi-ssid">
+              Nama Wi-Fi (SSID)
+              <input type="text" id="wifi-ssid" class="input-field" placeholder="Pilih dari daftar di atas atau ketik nama Wi-Fi / Hotspot HP" autocomplete="off">
+            </label>
+            <label class="form-label" for="wifi-pass">
+              Kata Sandi Wi-Fi (kosongkan jika jaringan terbuka)
+              <div class="pass-row">
+                <input type="password" id="wifi-pass" class="input-field" placeholder="Masukkan kata sandi Wi-Fi" autocomplete="off">
+                <button type="button" class="btn btn-sm" id="btn-toggle-pass" aria-label="Tampilkan atau sembunyikan kata sandi">Lihat</button>
+              </div>
+            </label>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:4px">
+              <button type="submit" class="btn btn-primary" id="btn-wifi-connect">Hubungkan Sekarang</button>
+              <button type="button" class="btn" id="btn-wifi-save">Simpan Saja (Auto-Connect)</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="section-header">
+            <h2 class="section-title">Jaringan Tersimpan</h2>
+            <button type="button" class="btn btn-sm" id="btn-wifi-refresh-saved">Muat Ulang</button>
+          </div>
+          <div id="wifi-saved-list">
+            <div class="state-box"><span>Memuat daftar Wi-Fi tersimpan...</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Device Panel (Bluetooth & System) -->
       <section id="panel-device" class="panel" aria-label="Pengaturan Perangkat">
         <div class="card">
           <div class="section-header">
@@ -984,28 +1067,6 @@
           <div id="bt-list">
             <div class="state-box"><span>Belum ada perangkat Bluetooth terdeteksi. Tekan Pindai Bluetooth.</span></div>
           </div>
-        </div>
-
-        <div class="card">
-          <div class="section-header">
-            <h2 class="section-title">Jaringan Wi-Fi</h2>
-            <button type="button" class="btn btn-sm" id="btn-wifi-scan">Pindai Wi-Fi</button>
-          </div>
-          <p class="muted" id="wifi-status-text" style="margin:0 0 12px">Memuat status Wi-Fi...</p>
-          <div id="wifi-list"></div>
-          <form id="wifi-connect-form" class="wifi-form">
-            <label class="form-label" for="wifi-ssid">
-              Nama Wi-Fi (SSID)
-              <input type="text" id="wifi-ssid" class="input-field" placeholder="Pilih dari hasil pindai atau ketik SSID">
-            </label>
-            <label class="form-label" for="wifi-pass">
-              Kata Sandi Wi-Fi (kosongkan jika jaringan terbuka)
-              <input type="password" id="wifi-pass" class="input-field" placeholder="Kata sandi Wi-Fi">
-            </label>
-            <div>
-              <button type="submit" class="btn btn-primary" id="btn-wifi-connect">Hubungkan Wi-Fi</button>
-            </div>
-          </form>
         </div>
 
         <div class="card">
@@ -1074,6 +1135,15 @@
       </svg>
       <span>Antrean</span>
       <span class="badge-count tabular" id="nav-queue-badge">0</span>
+    </button>
+    <button type="button" class="nav-btn" data-tab="wifi">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+        <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+        <line x1="12" y1="20" x2="12.01" y2="20"></line>
+      </svg>
+      <span>Wi-Fi</span>
     </button>
     <button type="button" class="nav-btn" data-tab="device">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -1144,6 +1214,7 @@
         volumeSlider: document.getElementById("volume-slider"),
         volumeLabel: document.getElementById("volume-label"),
         btnOutJack: document.getElementById("btn-out-jack"),
+        btnOutHdmi: document.getElementById("btn-out-hdmi"),
         btnOutBt: document.getElementById("btn-out-bt"),
 
         searchForm: document.getElementById("search-form"),
@@ -1162,8 +1233,14 @@
         btList: document.getElementById("bt-list"),
 
         btnWifiScan: document.getElementById("btn-wifi-scan"),
+        btnWifiReconnect: document.getElementById("btn-wifi-reconnect"),
+        btnWifiRefreshSaved: document.getElementById("btn-wifi-refresh-saved"),
+        btnWifiSave: document.getElementById("btn-wifi-save"),
+        btnTogglePass: document.getElementById("btn-toggle-pass"),
         wifiStatusText: document.getElementById("wifi-status-text"),
+        wifiActionMsg: document.getElementById("wifi-action-msg"),
         wifiList: document.getElementById("wifi-list"),
+        wifiSavedList: document.getElementById("wifi-saved-list"),
         wifiForm: document.getElementById("wifi-connect-form"),
         wifiSsid: document.getElementById("wifi-ssid"),
         wifiPass: document.getElementById("wifi-pass"),
@@ -1235,9 +1312,11 @@
           }
         }
         applyPanels();
+        if (tab === "wifi") {
+          loadWifiNetworks(true);
+        }
         if (tab === "device") {
           loadBluetoothDevices();
-          loadWifiNetworks();
         }
         if (tab === "search") {
           setTimeout(function () { el.searchInput.focus(); }, 40);
@@ -1246,7 +1325,7 @@
 
       function applyPanels() {
         const desktop = isDesktopLayout();
-        const panels = ["player", "search", "queue", "device"];
+        const panels = ["player", "search", "queue", "wifi", "device"];
         panels.forEach(function (id) {
           const node = document.getElementById("panel-" + id);
           if (!node) return;
@@ -1351,6 +1430,7 @@
 
         const outMode = bt.audio_output || "jack";
         el.btnOutJack.classList.toggle("on", outMode === "jack");
+        el.btnOutHdmi.classList.toggle("on", outMode === "hdmi");
         el.btnOutBt.classList.toggle("on", outMode === "bluetooth");
 
         // Queue
@@ -1388,9 +1468,12 @@
         }
 
         if (wifi.connected) {
-          el.wifiStatusText.textContent = "Terhubung ke " + (wifi.ssid || "Wi-Fi") + " (" + (wifi.ip || "-") + ", sinyal " + (wifi.signal || 0) + "%)";
+          el.wifiStatusText.textContent = "Terhubung ke " + (wifi.ssid || "Wi-Fi") + " | IP: " + (wifi.ip || "-") + " | Sinyal: " + (wifi.signal || 0) + "% (" + (wifi.interface || "wlan0") + ")";
         } else {
-          el.wifiStatusText.textContent = "Status Wi-Fi: " + (wifi.ssid || wifi.state || "Tidak terhubung") + " (" + (wifi.ip || "-") + ")";
+          el.wifiStatusText.textContent = "Status Wi-Fi: " + (wifi.ssid || wifi.state || "Tidak terhubung") + " | IP: " + (wifi.ip || "-");
+        }
+        if (wifi.message) {
+          el.wifiActionMsg.textContent = wifi.message;
         }
       }
 
@@ -1618,14 +1701,94 @@
         }
       }
 
-      async function loadWifiNetworks() {
+      function renderSavedWifi(saved) {
+        if (!saved || !saved.length) {
+          el.wifiSavedList.innerHTML = '<div class="state-box"><span>Belum ada profil Wi-Fi tersimpan di Raspberry Pi.</span></div>';
+          return;
+        }
+        const ul = document.createElement("ul");
+        ul.className = "item-list";
+        saved.forEach(function (prof) {
+          const li = document.createElement("li");
+          li.className = "track-row" + (prof.active ? " current" : "");
+
+          const info = document.createElement("div");
+          info.className = "row-info";
+          const t = document.createElement("div");
+          t.className = "row-title";
+          t.textContent = prof.ssid || prof.name;
+          const s = document.createElement("div");
+          s.className = "row-sub";
+          s.textContent = (prof.active ? "Sedang Aktif" : "Tersimpan") + (prof.autoconnect ? " | Auto-Connect" : "");
+          info.appendChild(t);
+          info.appendChild(s);
+
+          const actions = document.createElement("div");
+          actions.className = "row-actions";
+
+          const btnConn = document.createElement("button");
+          btnConn.type = "button";
+          btnConn.className = "btn btn-sm" + (prof.active ? "" : " btn-primary");
+          btnConn.disabled = Boolean(prof.active);
+          btnConn.textContent = prof.active ? "Aktif" : "Sambungkan";
+          btnConn.addEventListener("click", function () {
+            api("/api/wifi/connect-saved", { method: "POST", body: { name: prof.name } })
+              .then(function (r) {
+                showToast(r.message || "Berpindah ke " + prof.ssid);
+                setTimeout(function () { pollState(); loadWifiNetworks(false); }, 3000);
+              })
+              .catch(function (err) { showToast("Gagal pindah Wi-Fi: " + err.message); });
+          });
+
+          const btnForget = document.createElement("button");
+          btnForget.type = "button";
+          btnForget.className = "btn btn-sm btn-danger";
+          btnForget.textContent = "Lupakan";
+          btnForget.addEventListener("click", function () {
+            openConfirm(
+              "Lupakan Wi-Fi " + (prof.ssid || prof.name) + "?",
+              "Profil dan kata sandi Wi-Fi ini akan dihapus dari Raspberry Pi.",
+              function () {
+                api("/api/wifi/forget", { method: "POST", body: { name: prof.name } })
+                  .then(function (r) {
+                    showToast(r.message || "Profil Wi-Fi dihapus");
+                    setTimeout(function () { pollState(); loadWifiNetworks(false); }, 1000);
+                  })
+                  .catch(function (err) { showToast("Gagal menghapus: " + err.message); });
+              }
+            );
+          });
+
+          actions.appendChild(btnConn);
+          actions.appendChild(btnForget);
+          li.appendChild(info);
+          li.appendChild(actions);
+          ul.appendChild(li);
+        });
+        el.wifiSavedList.innerHTML = "";
+        el.wifiSavedList.appendChild(ul);
+      }
+
+      async function loadWifiNetworks(autoScanIfEmpty) {
         try {
           const data = await api("/api/wifi/networks");
           const nets = data.networks || [];
+          const saved = data.saved || [];
+          renderSavedWifi(saved);
+
+          if (data.message) {
+            el.wifiActionMsg.textContent = data.message;
+          }
+
           if (!nets.length) {
-            el.wifiList.innerHTML = '<div class="state-box"><span>Tekan Pindai Wi-Fi untuk melihat jaringan di sekitar Raspberry Pi.</span></div>';
+            if (autoScanIfEmpty && !data.is_scanning) {
+              triggerWifiScan();
+              return;
+            }
+            el.wifiList.innerHTML = '<div class="state-box"><span>Tekan Pindai Sekitar untuk melihat jaringan Wi-Fi di dekat Raspberry Pi.</span></div>';
             return;
           }
+
           const ul = document.createElement("ul");
           ul.className = "item-list";
           nets.forEach(function (net) {
@@ -1638,22 +1801,65 @@
             t.textContent = net.ssid;
             const s = document.createElement("div");
             s.className = "row-sub tabular";
-            s.textContent = "Sinyal " + net.signal + "%  " + (net.security || "Open") + (net.in_use ? "  [Aktif]" : "");
+            const secText = net.is_open ? "Terbuka" : (net.security || "WPA");
+            const tag = net.in_use ? " [Aktif]" : (net.is_saved ? " [Tersimpan]" : "");
+            s.textContent = "Sinyal " + net.signal + "% | " + secText + tag;
             info.appendChild(t);
             info.appendChild(s);
 
-            const btn = document.createElement("button");
-            btn.type = "button";
-            btn.className = "btn btn-sm";
-            btn.textContent = "Pilih";
-            btn.addEventListener("click", function () {
-              el.wifiSsid.value = net.ssid;
-              el.wifiPass.focus();
-              showToast("SSID dipilih: " + net.ssid);
-            });
+            const actions = document.createElement("div");
+            actions.className = "row-actions";
+
+            if (net.in_use) {
+              const btnNow = document.createElement("button");
+              btnNow.type = "button";
+              btnNow.className = "btn btn-sm";
+              btnNow.disabled = true;
+              btnNow.textContent = "Terhubung";
+              actions.appendChild(btnNow);
+            } else if (net.is_saved || net.is_open) {
+              const btnQuick = document.createElement("button");
+              btnQuick.type = "button";
+              btnQuick.className = "btn btn-sm btn-primary";
+              btnQuick.textContent = net.is_saved ? "Pindah" : "Hubungkan";
+              btnQuick.addEventListener("click", function () {
+                api("/api/wifi/connect", { method: "POST", body: { ssid: net.ssid, password: "" } })
+                  .then(function (r) {
+                    showToast(r.message || "Menghubungkan ke " + net.ssid);
+                    setTimeout(function () { pollState(); loadWifiNetworks(false); }, 3000);
+                  })
+                  .catch(function (err) { showToast("Gagal: " + err.message); });
+              });
+              actions.appendChild(btnQuick);
+
+              if (!net.is_open) {
+                const btnEdit = document.createElement("button");
+                btnEdit.type = "button";
+                btnEdit.className = "btn btn-sm";
+                btnEdit.textContent = "Sandi";
+                btnEdit.addEventListener("click", function () {
+                  el.wifiSsid.value = net.ssid;
+                  el.wifiPass.focus();
+                  el.wifiForm.scrollIntoView({ behavior: "smooth", block: "center" });
+                });
+                actions.appendChild(btnEdit);
+              }
+            } else {
+              const btnPick = document.createElement("button");
+              btnPick.type = "button";
+              btnPick.className = "btn btn-sm";
+              btnPick.textContent = "Pilih";
+              btnPick.addEventListener("click", function () {
+                el.wifiSsid.value = net.ssid;
+                el.wifiPass.focus();
+                el.wifiForm.scrollIntoView({ behavior: "smooth", block: "center" });
+                showToast("SSID dipilih: " + net.ssid + ". Masukkan kata sandi lalu tekan Hubungkan.");
+              });
+              actions.appendChild(btnPick);
+            }
 
             li.appendChild(info);
-            li.appendChild(btn);
+            li.appendChild(actions);
             ul.appendChild(li);
           });
           el.wifiList.innerHTML = "";
@@ -1661,6 +1867,23 @@
         } catch (err) {
           el.wifiList.innerHTML = '<div class="state-box error"><span>Gagal memuat Wi-Fi: ' + escapeHtml(err.message) + '</span></div>';
         }
+      }
+
+      function triggerWifiScan() {
+        el.btnWifiScan.disabled = true;
+        el.wifiList.innerHTML = '<div class="state-box"><span>Memindai jaringan Wi-Fi di sekitar Raspberry Pi...</span></div>';
+        api("/api/wifi/scan", { method: "POST" })
+          .then(function () {
+            showToast("Memindai Wi-Fi sekitar...");
+            setTimeout(function () {
+              loadWifiNetworks(false);
+              el.btnWifiScan.disabled = false;
+            }, 2500);
+          })
+          .catch(function (err) {
+            showToast(err.message);
+            el.btnWifiScan.disabled = false;
+          });
       }
 
       function escapeHtml(str) {
@@ -1789,6 +2012,12 @@
           .catch(function (err) { showToast(err.message); });
       });
 
+      el.btnOutHdmi.addEventListener("click", function () {
+        api("/api/bluetooth/output", { method: "POST", body: { mode: "hdmi" } })
+          .then(function () { showToast("Output dialihkan ke Audio HDMI"); pollState(); })
+          .catch(function (err) { showToast(err.message); });
+      });
+
       el.btnOutBt.addEventListener("click", function () {
         api("/api/bluetooth/output", { method: "POST", body: { mode: "bluetooth" } })
           .then(function () { showToast("Output dialihkan ke Bluetooth"); pollState(); })
@@ -1825,20 +2054,43 @@
           });
       });
 
-      el.btnWifiScan.addEventListener("click", function () {
-        el.btnWifiScan.disabled = true;
-        api("/api/wifi/scan", { method: "POST" })
-          .then(function () {
-            showToast("Memindai jaringan Wi-Fi...");
-            setTimeout(function () {
-              loadWifiNetworks();
-              el.btnWifiScan.disabled = false;
-            }, 2200);
+      el.btnWifiScan.addEventListener("click", triggerWifiScan);
+
+      el.btnWifiReconnect.addEventListener("click", function () {
+        api("/api/wifi/reconnect", { method: "POST" })
+          .then(function (r) {
+            showToast(r.message || "Menyambungkan ulang Wi-Fi...");
+            setTimeout(function () { pollState(); loadWifiNetworks(false); }, 2500);
           })
-          .catch(function (err) {
-            showToast(err.message);
-            el.btnWifiScan.disabled = false;
-          });
+          .catch(function (err) { showToast(err.message); });
+      });
+
+      el.btnWifiRefreshSaved.addEventListener("click", function () {
+        loadWifiNetworks(false);
+        showToast("Daftar jaringan tersimpan diperbarui");
+      });
+
+      el.btnTogglePass.addEventListener("click", function () {
+        const isPass = el.wifiPass.type === "password";
+        el.wifiPass.type = isPass ? "text" : "password";
+        el.btnTogglePass.textContent = isPass ? "Tutup" : "Lihat";
+      });
+
+      el.btnWifiSave.addEventListener("click", function () {
+        const ssid = el.wifiSsid.value.trim();
+        const password = el.wifiPass.value;
+        if (!ssid) {
+          showToast("Masukkan nama SSID Wi-Fi terlebih dahulu");
+          el.wifiSsid.focus();
+          return;
+        }
+        api("/api/wifi/save", { method: "POST", body: { ssid: ssid, password: password } })
+          .then(function (r) {
+            showToast(r.message || "Wi-Fi disimpan untuk auto-connect");
+            el.wifiPass.value = "";
+            setTimeout(function () { loadWifiNetworks(false); }, 1000);
+          })
+          .catch(function (err) { showToast("Gagal simpan Wi-Fi: " + err.message); });
       });
 
       el.wifiForm.addEventListener("submit", function (e) {
@@ -1854,7 +2106,7 @@
           .then(function (r) {
             showToast(r.message || "Menghubungkan ke " + ssid);
             el.wifiPass.value = "";
-            setTimeout(pollState, 3000);
+            setTimeout(function () { pollState(); loadWifiNetworks(false); }, 3500);
           })
           .catch(function (err) { showToast("Gagal hubung Wi-Fi: " + err.message); });
       });
